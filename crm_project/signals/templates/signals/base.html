@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IB CRM{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'signals/css/style.css' %}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">IB CRM</div>
+        <div class="navbar-menu">
+            <a href="{% url 'signals:home' %}" class="nav-link">Главная</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Модальное окно для добавления сигнала -->
+    <div id="signalModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Добавить сигнал</h2>
+            <div class="signal-type-selector">
+                <button class="signal-type-btn active" data-type="seasonal">Сезонный сигнал</button>
+                <!-- Здесь можно добавить другие типы сигналов -->
+            </div>
+            <form id="signalForm" class="signal-form">
+                {% csrf_token %}
+                <div id="seasonalSignalFields">
+                    <!-- Поля будут добавлены динамически через JavaScript -->
+                </div>
+                <button type="submit" class="submit-btn">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="{% static 'signals/js/main.js' %}"></script>
+</body>
+</html> 

@@ -1,0 +1,79 @@
+{% extends 'signals/base.html' %}
+
+{% block title %}{{ signal.symbol }} - Детали сигнала{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="detail-header">
+        <a href="{% url 'signals:home' %}" class="back-link">
+            <span class="back-icon">←</span>
+            Назад к списку
+        </a>
+        <h1>{{ signal.symbol }}</h1>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section">
+            <h2 class="detail-section-title">Основная информация</h2>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Magic Number</div>
+                    <div class="detail-value">{{ signal.magic_number }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Направление</div>
+                    <div class="detail-value">
+                        <span class="signal-direction {{ signal.direction|lower }}">
+                            {{ signal.get_direction_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Месяц</div>
+                    <div class="detail-value">{{ signal.month }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h2 class="detail-section-title">Параметры входа/выхода</h2>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Дата входа</div>
+                    <div class="detail-value">{{ signal.entry_month }}/{{ signal.entry_day }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Дата выхода</div>
+                    <div class="detail-value">{{ signal.takeprofit_month }}/{{ signal.takeprofit_day }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Время открытия</div>
+                    <div class="detail-value">{{ signal.open_time|time:"H:i" }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Время закрытия</div>
+                    <div class="detail-value">{{ signal.close_time|time:"H:i" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h2 class="detail-section-title">Риск-менеджмент</h2>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Риск</div>
+                    <div class="detail-value highlight">{{ signal.risk }}%</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Стоп-лосс</div>
+                    <div class="detail-value">{{ signal.stoploss }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Тип стоп-лосса</div>
+                    <div class="detail-value">{{ signal.get_stoploss_type_display }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

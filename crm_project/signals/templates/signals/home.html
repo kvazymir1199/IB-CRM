@@ -1,0 +1,62 @@
+{% extends 'signals/base.html' %}
+
+{% block title %}Главная - IB CRM{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Торговые сигналы</h1>
+        <button id="addSignalBtn" class="btn btn-primary">
+            <span class="btn-icon">+</span>
+            Добавить сигнал
+        </button>
+    </div>
+
+    <div class="signals-grid">
+        {% for signal in signals %}
+        <a href="{% url 'signals:signal_detail' signal.id %}" class="signal-card">
+            <div class="signal-header">
+                <div class="signal-symbol">{{ signal.symbol }}</div>
+                <div class="signal-magic">Magic: {{ signal.magic_number }}</div>
+                <div class="signal-direction {{ signal.direction|lower }}">
+                    {{ signal.get_direction_display }}
+                </div>
+            </div>
+
+            <div class="signal-details">
+                <div class="signal-detail-group">
+                    <span class="signal-detail-label">Вход</span>
+                    <span class="signal-detail-value">{{ signal.entry_month }}/{{ signal.entry_day }}</span>
+                </div>
+                <div class="signal-detail-group">
+                    <span class="signal-detail-label">Выход</span>
+                    <span class="signal-detail-value">{{ signal.takeprofit_month }}/{{ signal.takeprofit_day }}</span>
+                </div>
+                <div class="signal-detail-group">
+                    <span class="signal-detail-label">Время открытия</span>
+                    <span class="signal-detail-value">{{ signal.open_time|time:"H:i" }}</span>
+                </div>
+                <div class="signal-detail-group">
+                    <span class="signal-detail-label">Время закрытия</span>
+                    <span class="signal-detail-value">{{ signal.close_time|time:"H:i" }}</span>
+                </div>
+            </div>
+
+            <div class="signal-risk">
+                <div>
+                    <div class="risk-label">Риск</div>
+                    <div class="risk-value">{{ signal.risk }}%</div>
+                </div>
+                <div class="stoploss-info">
+                    Стоп-лосс: {{ signal.stoploss }} ({{ signal.get_stoploss_type_display }})
+                </div>
+            </div>
+        </a>
+        {% empty %}
+        <div class="no-signals">
+            <p>Сигналов пока нет</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 
