@@ -1,62 +1,82 @@
 {% extends 'signals/base.html' %}
 
-{% block title %}Главная - IB CRM{% endblock %}
+{% block title %}Торговые сигналы{% endblock %}
 
 {% block content %}
-<div class="dashboard">
-    <div class="dashboard-header">
-        <h1>Торговые сигналы</h1>
-        <button id="addSignalBtn" class="btn btn-primary">
-            <span class="btn-icon">+</span>
-            Добавить сигнал
-        </button>
+<div class="page-header">
+    <h1>Торговые сигналы</h1>
+    <button class="btn btn-primary" id="addSignalBtn">
+        <span class="btn-icon">+</span>
+        Добавить сигнал
+    </button>
+</div>
+
+<div class="filters">
+    <div class="search-box">
+        <input type="text" class="form-control" placeholder="Поиск сигналов...">
+        <span class="search-icon">🔍</span>
     </div>
-
-    <div class="signals-grid">
-        {% for signal in signals %}
-        <a href="{% url 'signals:signal_detail' signal.id %}" class="signal-card">
-            <div class="signal-header">
-                <div class="signal-symbol">{{ signal.symbol }}</div>
-                <div class="signal-magic">Magic: {{ signal.magic_number }}</div>
-                <div class="signal-direction {{ signal.direction|lower }}">
-                    {{ signal.get_direction_display }}
-                </div>
-            </div>
-
-            <div class="signal-details">
-                <div class="signal-detail-group">
-                    <span class="signal-detail-label">Вход</span>
-                    <span class="signal-detail-value">{{ signal.entry_month }}/{{ signal.entry_day }}</span>
-                </div>
-                <div class="signal-detail-group">
-                    <span class="signal-detail-label">Выход</span>
-                    <span class="signal-detail-value">{{ signal.takeprofit_month }}/{{ signal.takeprofit_day }}</span>
-                </div>
-                <div class="signal-detail-group">
-                    <span class="signal-detail-label">Время открытия</span>
-                    <span class="signal-detail-value">{{ signal.open_time|time:"H:i" }}</span>
-                </div>
-                <div class="signal-detail-group">
-                    <span class="signal-detail-label">Время закрытия</span>
-                    <span class="signal-detail-value">{{ signal.close_time|time:"H:i" }}</span>
-                </div>
-            </div>
-
-            <div class="signal-risk">
-                <div>
-                    <div class="risk-label">Риск</div>
-                    <div class="risk-value">{{ signal.risk }}%</div>
-                </div>
-                <div class="stoploss-info">
-                    Стоп-лосс: {{ signal.stoploss }} ({{ signal.get_stoploss_type_display }})
-                </div>
-            </div>
-        </a>
-        {% empty %}
-        <div class="no-signals">
-            <p>Сигналов пока нет</p>
-        </div>
-        {% endfor %}
+    <div class="filter-group">
+        <select class="form-control">
+            <option value="">Все направления</option>
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <select class="form-control">
+            <option value="">Все символы</option>
+            <option value="silver">Silver</option>
+            <option value="gold">Gold</option>
+        </select>
     </div>
 </div>
+
+{% if signals %}
+<div class="signals-list">
+    {% for signal in signals %}
+    <a href="{% url 'signals:signal_detail' signal.id %}" class="signal-card">
+        <div class="signal-header">
+            <h2 class="signal-title">{{ signal.symbol }}</h2>
+            <span class="signal-direction {{ signal.direction|lower }}">{{ signal.direction }}</span>
+        </div>
+        <div class="signal-details">
+            <div class="signal-info">
+                <span class="signal-label">Magic Number</span>
+                <span class="signal-value">{{ signal.magic_number }}</span>
+            </div>
+            <div class="signal-info">
+                <span class="signal-label">Вход</span>
+                <span class="signal-value">{{ signal.entry_month }}/{{ signal.entry_day }}</span>
+            </div>
+            <div class="signal-info">
+                <span class="signal-label">Выход</span>
+                <span class="signal-value">{{ signal.takeprofit_month }}/{{ signal.takeprofit_day }}</span>
+            </div>
+            <div class="signal-info">
+                <span class="signal-label">Риск</span>
+                <span class="signal-value">{{ signal.risk }}%</span>
+            </div>
+            <div class="signal-info">
+                <span class="signal-label">Стоп-лосс</span>
+                <span class="signal-value">{{ signal.stoploss }} ({{ signal.stoploss_type }})</span>
+            </div>
+            <div class="signal-info">
+                <span class="signal-label">Время открытия</span>
+                <span class="signal-value">{{ signal.open_time|date:"H:i" }}</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">📊</div>
+    <div class="empty-state-text">Пока нет сигналов</div>
+    <button class="btn btn-primary" id="addFirstSignalBtn">
+        <span class="btn-icon">+</span>
+        Добавить первый сигнал
+    </button>
+</div>
+{% endif %}
 {% endblock %} 

@@ -10,6 +10,10 @@
             Назад к списку
         </a>
         <h1>{{ signal.symbol }}</h1>
+        <button id="editSignalBtn" class="btn btn-primary">
+            <span class="btn-icon">✎</span>
+            Редактировать
+        </button>
     </div>
 
     <div class="detail-card">
@@ -76,4 +80,182 @@
         </div>
     </div>
 </div>
+
+<!-- Модальное окно для редактирования -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Редактирование сигнала</h2>
+            <span class="close">&times;</span>
+        </div>
+        <form id="editSignalForm">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="magic_number">Magic Number</label>
+                <input type="number" id="magic_number" name="magic_number" class="form-control" value="{{ signal.magic_number }}" required>
+            </div>
+            <div class="form-group">
+                <label for="symbol">Символ</label>
+                <input type="text" id="symbol" name="symbol" class="form-control" value="{{ signal.symbol }}" required>
+            </div>
+            <div class="form-group">
+                <label for="direction">Направление</label>
+                <select id="direction" name="direction" class="form-control" required>
+                    <option value="LONG" {% if signal.direction == 'LONG' %}selected{% endif %}>Long</option>
+                    <option value="SHORT" {% if signal.direction == 'SHORT' %}selected{% endif %}>Short</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="month">Месяц</label>
+                <input type="number" id="month" name="month" class="form-control" min="1" max="12" value="{{ signal.month }}" required>
+            </div>
+            <div class="form-group">
+                <label for="entry_month">Месяц входа</label>
+                <input type="number" id="entry_month" name="entry_month" class="form-control" min="1" max="12" value="{{ signal.entry_month }}" required>
+            </div>
+            <div class="form-group">
+                <label for="entry_day">День входа</label>
+                <input type="number" id="entry_day" name="entry_day" class="form-control" min="1" max="31" value="{{ signal.entry_day }}" required>
+            </div>
+            <div class="form-group">
+                <label for="takeprofit_month">Месяц выхода</label>
+                <input type="number" id="takeprofit_month" name="takeprofit_month" class="form-control" min="1" max="12" value="{{ signal.takeprofit_month }}" required>
+            </div>
+            <div class="form-group">
+                <label for="takeprofit_day">День выхода</label>
+                <input type="number" id="takeprofit_day" name="takeprofit_day" class="form-control" min="1" max="31" value="{{ signal.takeprofit_day }}" required>
+            </div>
+            <div class="form-group">
+                <label for="open_time">Время открытия</label>
+                <input type="time" id="open_time" name="open_time" class="form-control" value="{{ signal.open_time|time:'H:i' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="close_time">Время закрытия</label>
+                <input type="time" id="close_time" name="close_time" class="form-control" value="{{ signal.close_time|time:'H:i' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="risk">Риск (%)</label>
+                <input type="number" id="risk" name="risk" class="form-control" step="0.01" value="{{ signal.risk }}" required>
+            </div>
+            <div class="form-group">
+                <label for="stoploss">Стоп-лосс</label>
+                <input type="number" id="stoploss" name="stoploss" class="form-control" step="0.01" value="{{ signal.stoploss }}" required>
+            </div>
+            <div class="form-group">
+                <label for="stoploss_type">Тип стоп-лосса</label>
+                <select id="stoploss_type" name="stoploss_type" class="form-control" required>
+                    <option value="POINTS" {% if signal.stoploss_type == 'POINTS' %}selected{% endif %}>Пункты</option>
+                    <option value="PERCENTAGE" {% if signal.stoploss_type == 'PERCENTAGE' %}selected{% endif %}>Проценты</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-success">
+                    <span class="btn-icon">✓</span>
+                    Сохранить
+                </button>
+                <button type="button" class="btn btn-secondary" id="cancelEditBtn">
+                    <span class="btn-icon">✕</span>
+                    Отменить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    window.signalData = {
+        magic_number: "{{ signal.magic_number }}",
+        symbol: "{{ signal.symbol }}",
+        direction: "{{ signal.direction }}",
+        month: "{{ signal.month }}",
+        entry_month: "{{ signal.entry_month }}",
+        entry_day: "{{ signal.entry_day }}",
+        takeprofit_month: "{{ signal.takeprofit_month }}",
+        takeprofit_day: "{{ signal.takeprofit_day }}",
+        open_time: "{{ signal.open_time|date:'c' }}",
+        close_time: "{{ signal.close_time|date:'c' }}",
+        risk: "{{ signal.risk }}",
+        stoploss: "{{ signal.stoploss }}",
+        stoploss_type: "{{ signal.stoploss_type }}"
+    };
+</script>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const editModal = document.getElementById('editModal');
+        const editBtn = document.getElementById('editSignalBtn');
+        const closeBtn = document.querySelector('.close');
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        const editForm = document.getElementById('editSignalForm');
+
+        // Открытие модального окна
+        editBtn.addEventListener('click', function() {
+            editModal.style.display = 'block';
+        });
+
+        // Закрытие модального окна
+        function closeModal() {
+            editModal.style.display = 'none';
+        }
+
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        // Закрытие при клике вне модального окна
+        window.addEventListener('click', function(event) {
+            if (event.target === editModal) {
+                closeModal();
+            }
+        });
+
+        // Обработка отправки формы
+        editForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+            const data = {};
+
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'csrfmiddlewaretoken') {
+                    if (key === 'magic_number' || key === 'month' ||
+                        key === 'entry_month' || key === 'entry_day' ||
+                        key === 'takeprofit_month' || key === 'takeprofit_day') {
+                        data[key] = parseInt(value);
+                    } else if (key === 'stoploss' || key === 'risk') {
+                        data[key] = parseFloat(value);
+                    } else {
+                        data[key] = value;
+                    }
+                }
+            }
+
+            try {
+                const response = await fetch(`/signal/{{ signal.id }}/update/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
+                    closeModal();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showNotification('error', 'Ошибка!', result.error || 'Произошла ошибка при обновлении сигнала');
+                }
+            } catch (error) {
+                showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке данных');
+            }
+        });
+    });
+</script>
 {% endblock %} 

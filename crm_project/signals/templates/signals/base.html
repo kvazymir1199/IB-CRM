@@ -1,17 +1,23 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}IB CRM{% endblock %}</title>
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'signals/css/style.css' %}">
+    <title>{% block title %}CRM Система{% endblock %}</title>
+    <!-- Стили -->
+    <link rel="stylesheet" href="{% static 'signals/css/base.css' %}">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="navbar">
-        <div class="navbar-brand">IB CRM</div>
-        <div class="navbar-menu">
-            <a href="{% url 'signals:home' %}" class="nav-link">Главная</a>
+        <div class="container">
+            <a href="{% url 'signals:home' %}" class="navbar-brand">CRM Система</a>
+            <div class="navbar-menu">
+                <a href="{% url 'signals:home' %}" class="nav-link">Сигналы</a>
+                <a href="#" class="nav-link">Статистика</a>
+                <a href="#" class="nav-link">Настройки</a>
+            </div>
         </div>
     </nav>
 
@@ -38,6 +44,8 @@
         </div>
     </div>
 
+    <!-- JavaScript -->
     <script src="{% static 'signals/js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html> 

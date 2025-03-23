@@ -185,4 +185,99 @@ document.addEventListener('DOMContentLoaded', function () {
             showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке формы');
         }
     });
+
+    // Получаем элементы модального окна
+    const editModal = document.getElementById('editSignalModal');
+    const editBtn = document.getElementById('editSignalBtn');
+    const editCloseBtn = document.querySelector('.close');
+    const editForm = document.getElementById('editSignalForm');
+
+    // Функция для показа модального окна
+    function showModal() {
+        editModal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Функция для скрытия модального окна
+    function hideModal() {
+        editModal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    // Обработчики событий для открытия/закрытия модального окна
+    if (editBtn) {
+        editBtn.addEventListener('click', showModal);
+    }
+
+    if (editCloseBtn) {
+        editCloseBtn.addEventListener('click', hideModal);
+    }
+
+    // Закрытие модального окна при клике вне его
+    window.addEventListener('click', function (event) {
+        if (event.target === editModal) {
+            hideModal();
+        }
+    });
+
+    // Обработка отправки формы
+    if (editForm) {
+        editForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(editForm);
+            const signalId = editForm.dataset.signalId;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            try {
+                const response = await fetch(`/signals/signal/${signalId}/update/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
+                    hideModal();
+                    // Обновляем страницу через 1 секунду
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showNotification('error', 'Ошибка!', data.error || 'Произошла ошибка при обновлении сигнала');
+                }
+            } catch (error) {
+                showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке запроса');
+                console.error('Error:', error);
+            }
+        });
+    }
+
+    // Функция для форматирования даты и времени
+    function formatDateTime(date) {
+        return date.toISOString().slice(0, 16);
+    }
+
+    // Заполнение формы текущими данными
+    if (editForm) {
+        const signalData = window.signalData;
+        if (signalData) {
+            Object.keys(signalData).forEach(key => {
+                const input = editForm.querySelector(`[name="${key}"]`);
+                if (input) {
+                    if (input.type === 'datetime-local') {
+                        // Преобразуем строку даты в объект Date и форматируем
+                        const date = new Date(signalData[key]);
+                        input.value = formatDateTime(date);
+                    } else {
+                        input.value = signalData[key];
+                    }
+                }
+            });
+        }
+    }
 }); 
