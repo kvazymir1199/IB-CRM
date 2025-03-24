@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 try {
-                    const response = await fetch('/signals/api/signals/seasonal/', {
+                    const response = await fetch('/api/signals/seasonal/', {
                         method: 'POST',
                         headers: {
                             'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
@@ -178,10 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             window.location.reload();
                         }, 1000);
                     } else {
-                        let errorMessage = 'Произошла ошибка при создании сигнала';
-                        if (responseData.error && responseData.error.includes('UNIQUE constraint failed')) {
-                            errorMessage = 'Сигнал с таким Magic Number уже существует';
-                        }
+                        let errorMessage = responseData.error || responseData.magic_number?.[0] || 'Произошла ошибка при создании сигнала';
                         showNotification('error', 'Ошибка!', errorMessage);
                     }
                 } catch (error) {
@@ -247,28 +244,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 try {
                     const signalId = editForm.dataset.signalId;
+                    console.log('Updating signal with ID:', signalId);
+                    console.log('Request URL:', `/api/signals/seasonal/${signalId}/`);
+                    console.log('Request data:', data);
+
                     const response = await fetch(`/api/signals/seasonal/${signalId}/`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
                         },
                         body: JSON.stringify(data)
                     });
 
-                    if (!response.ok) {
-                        const result = await response.json();
-                        throw new Error(result.error || 'Произошла ошибка при обновлении сигнала');
-                    }
+                    console.log('Response status:', response.status);
+                    const responseData = await response.json();
+                    console.log('Response data:', responseData);
 
-                    showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
-                    closeModal();
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    if (response.ok) {
+                        showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
+                        closeModal();
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        let errorMessage = responseData.error || responseData.magic_number?.[0] || 'Произошла ошибка при обновлении сигнала';
+                        showNotification('error', 'Ошибка!', errorMessage);
+                    }
                 } catch (error) {
                     console.error('Error:', error);
-                    showNotification('error', 'Ошибка!', error.message || 'Произошла ошибка при отправке данных');
+                    showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке данных');
                 }
             });
         }
@@ -284,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Заполнение формы текущими данными
+    const editForm = document.getElementById('editSignalForm');
     if (editForm) {
         const signalData = window.signalData;
         if (signalData) {
@@ -301,25 +307,4 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
     }
-
-    // Инициализация при загрузке страницы
-    document.addEventListener('DOMContentLoaded', function () {
-        // Инициализация модального окна
-        modal.init();
-
-        // Инициализация форм
-        forms.init();
-
-        // Инициализация фильтров
-        filters.init();
-
-        // Обработчик кнопки добавления сигнала
-        const addSignalBtn = document.getElementById('addSignalBtn');
-        if (addSignalBtn) {
-            addSignalBtn.addEventListener('click', () => {
-                modal.open();
-                modal.switchSignalType('seasonal');
-            });
-        }
-    });
 }); 
