@@ -6,12 +6,12 @@
 <div class="container">
     <div class="detail-header">
         <a href="{% url 'signals:home' %}" class="back-link">
-            <span class="back-icon">←</span>
+            <i class="fas fa-arrow-left back-icon"></i>
             Назад к списку
         </a>
         <h1>{{ signal.symbol }}</h1>
         <button id="editSignalBtn" class="btn btn-primary">
-            <span class="btn-icon">✎</span>
+            <i class="fas fa-edit"></i>
             Редактировать
         </button>
     </div>
@@ -25,38 +25,52 @@
                     <div class="detail-value">{{ signal.magic_number }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Направление</div>
-                    <div class="detail-value">
-                        <span class="signal-direction {{ signal.direction|lower }}">
-                            {{ signal.get_direction_display }}
-                        </span>
-                    </div>
+                    <div class="detail-label">Символ</div>
+                    <div class="detail-value">{{ signal.symbol }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Месяц</div>
                     <div class="detail-value">{{ signal.month }}</div>
                 </div>
+                <div class="detail-item">
+                    <div class="detail-label">Направление</div>
+                    <div class="detail-value">{{ signal.get_direction_display }}</div>
+                </div>
             </div>
         </div>
 
         <div class="detail-section">
-            <h2 class="detail-section-title">Параметры входа/выхода</h2>
+            <h2 class="detail-section-title">Параметры входа</h2>
             <div class="detail-grid">
                 <div class="detail-item">
-                    <div class="detail-label">Дата входа</div>
-                    <div class="detail-value">{{ signal.entry_month }}/{{ signal.entry_day }}</div>
+                    <div class="detail-label">Месяц входа</div>
+                    <div class="detail-value">{{ signal.entry_month }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Дата выхода</div>
-                    <div class="detail-value">{{ signal.takeprofit_month }}/{{ signal.takeprofit_day }}</div>
+                    <div class="detail-label">День входа</div>
+                    <div class="detail-value">{{ signal.entry_day }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Время открытия</div>
-                    <div class="detail-value">{{ signal.open_time|time:"H:i" }}</div>
+                    <div class="detail-value">{{ signal.open_time }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h2 class="detail-section-title">Параметры выхода</h2>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">Месяц выхода</div>
+                    <div class="detail-value">{{ signal.takeprofit_month }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">День выхода</div>
+                    <div class="detail-value">{{ signal.takeprofit_day }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Время закрытия</div>
-                    <div class="detail-value">{{ signal.close_time|time:"H:i" }}</div>
+                    <div class="detail-value">{{ signal.close_time }}</div>
                 </div>
             </div>
         </div>
@@ -65,10 +79,6 @@
             <h2 class="detail-section-title">Риск-менеджмент</h2>
             <div class="detail-grid">
                 <div class="detail-item">
-                    <div class="detail-label">Риск</div>
-                    <div class="detail-value highlight">{{ signal.risk }}%</div>
-                </div>
-                <div class="detail-item">
                     <div class="detail-label">Стоп-лосс</div>
                     <div class="detail-value">{{ signal.stoploss }}</div>
                 </div>
@@ -76,89 +86,94 @@
                     <div class="detail-label">Тип стоп-лосса</div>
                     <div class="detail-value">{{ signal.get_stoploss_type_display }}</div>
                 </div>
+                <div class="detail-item">
+                    <div class="detail-label">Риск (%)</div>
+                    <div class="detail-value">{{ signal.risk }}</div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Модальное окно для редактирования -->
+<!-- Модальное окно редактирования -->
 <div id="editModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <h2>Редактирование сигнала</h2>
-            <span class="close">&times;</span>
+            <button class="close" aria-label="Закрыть">&times;</button>
         </div>
-        <form id="editSignalForm">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="magic_number">Magic Number</label>
-                <input type="number" id="magic_number" name="magic_number" class="form-control" value="{{ signal.magic_number }}" required>
-            </div>
-            <div class="form-group">
-                <label for="symbol">Символ</label>
-                <input type="text" id="symbol" name="symbol" class="form-control" value="{{ signal.symbol }}" required>
-            </div>
-            <div class="form-group">
-                <label for="direction">Направление</label>
-                <select id="direction" name="direction" class="form-control" required>
-                    <option value="LONG" {% if signal.direction == 'LONG' %}selected{% endif %}>Long</option>
-                    <option value="SHORT" {% if signal.direction == 'SHORT' %}selected{% endif %}>Short</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="month">Месяц</label>
-                <input type="number" id="month" name="month" class="form-control" min="1" max="12" value="{{ signal.month }}" required>
-            </div>
-            <div class="form-group">
-                <label for="entry_month">Месяц входа</label>
-                <input type="number" id="entry_month" name="entry_month" class="form-control" min="1" max="12" value="{{ signal.entry_month }}" required>
-            </div>
-            <div class="form-group">
-                <label for="entry_day">День входа</label>
-                <input type="number" id="entry_day" name="entry_day" class="form-control" min="1" max="31" value="{{ signal.entry_day }}" required>
-            </div>
-            <div class="form-group">
-                <label for="takeprofit_month">Месяц выхода</label>
-                <input type="number" id="takeprofit_month" name="takeprofit_month" class="form-control" min="1" max="12" value="{{ signal.takeprofit_month }}" required>
-            </div>
-            <div class="form-group">
-                <label for="takeprofit_day">День выхода</label>
-                <input type="number" id="takeprofit_day" name="takeprofit_day" class="form-control" min="1" max="31" value="{{ signal.takeprofit_day }}" required>
-            </div>
-            <div class="form-group">
-                <label for="open_time">Время открытия</label>
-                <input type="time" id="open_time" name="open_time" class="form-control" value="{{ signal.open_time|time:'H:i' }}" required>
-            </div>
-            <div class="form-group">
-                <label for="close_time">Время закрытия</label>
-                <input type="time" id="close_time" name="close_time" class="form-control" value="{{ signal.close_time|time:'H:i' }}" required>
-            </div>
-            <div class="form-group">
-                <label for="risk">Риск (%)</label>
-                <input type="number" id="risk" name="risk" class="form-control" step="0.01" value="{{ signal.risk }}" required>
-            </div>
-            <div class="form-group">
-                <label for="stoploss">Стоп-лосс</label>
-                <input type="number" id="stoploss" name="stoploss" class="form-control" step="0.01" value="{{ signal.stoploss }}" required>
-            </div>
-            <div class="form-group">
-                <label for="stoploss_type">Тип стоп-лосса</label>
-                <select id="stoploss_type" name="stoploss_type" class="form-control" required>
-                    <option value="POINTS" {% if signal.stoploss_type == 'POINTS' %}selected{% endif %}>Пункты</option>
-                    <option value="PERCENTAGE" {% if signal.stoploss_type == 'PERCENTAGE' %}selected{% endif %}>Проценты</option>
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-success">
-                    <span class="btn-icon">✓</span>
-                    Сохранить
-                </button>
-                <button type="button" class="btn btn-secondary" id="cancelEditBtn">
-                    <span class="btn-icon">✕</span>
-                    Отменить
-                </button>
-            </div>
-        </form>
+        
+        <div class="modal-body">
+            <form id="editSignalForm" class="form-grid" data-signal-id="{{ signal.id }}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="magic_number">Magic Number</label>
+                    <input type="number" id="magic_number" name="magic_number" class="form-control" value="{{ signal.magic_number }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="symbol">Символ</label>
+                    <input type="text" id="symbol" name="symbol" class="form-control" value="{{ signal.symbol }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="month">Месяц</label>
+                    <input type="number" id="month" name="month" class="form-control" value="{{ signal.month }}" min="1" max="12" required>
+                </div>
+                <div class="form-group">
+                    <label for="entry_month">Месяц входа</label>
+                    <input type="number" id="entry_month" name="entry_month" class="form-control" value="{{ signal.entry_month }}" min="1" max="12" required>
+                </div>
+                <div class="form-group">
+                    <label for="entry_day">День входа</label>
+                    <input type="number" id="entry_day" name="entry_day" class="form-control" value="{{ signal.entry_day }}" min="1" max="31" required>
+                </div>
+                <div class="form-group">
+                    <label for="takeprofit_month">Месяц выхода</label>
+                    <input type="number" id="takeprofit_month" name="takeprofit_month" class="form-control" value="{{ signal.takeprofit_month }}" min="1" max="12" required>
+                </div>
+                <div class="form-group">
+                    <label for="takeprofit_day">День выхода</label>
+                    <input type="number" id="takeprofit_day" name="takeprofit_day" class="form-control" value="{{ signal.takeprofit_day }}" min="1" max="31" required>
+                </div>
+                <div class="form-group">
+                    <label for="open_time">Время открытия</label>
+                    <input type="time" id="open_time" name="open_time" class="form-control" value="{{ signal.open_time|time:'H:i' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="close_time">Время закрытия</label>
+                    <input type="time" id="close_time" name="close_time" class="form-control" value="{{ signal.close_time|time:'H:i' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="risk">Риск (%)</label>
+                    <input type="number" id="risk" name="risk" class="form-control" value="{{ signal.risk }}" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="stoploss">Стоп-лосс</label>
+                    <input type="number" id="stoploss" name="stoploss" class="form-control" value="{{ signal.stoploss }}" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="stoploss_type">Тип стоп-лосса</label>
+                    <select id="stoploss_type" name="stoploss_type" class="form-control" required>
+                        <option value="POINTS" {% if signal.stoploss_type == 'POINTS' %}selected{% endif %}>Пункты</option>
+                        <option value="PERCENTAGE" {% if signal.stoploss_type == 'PERCENTAGE' %}selected{% endif %}>Проценты</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="direction">Направление</label>
+                    <select id="direction" name="direction" class="form-control" required>
+                        <option value="LONG" {% if signal.direction == 'LONG' %}selected{% endif %}>Long</option>
+                        <option value="SHORT" {% if signal.direction == 'SHORT' %}selected{% endif %}>Short</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        
+        <div class="modal-footer">
+            <button type="button" id="cancelEditBtn" class="btn btn-secondary">Отмена</button>
+            <button type="submit" form="editSignalForm" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                Сохранить
+            </button>
+        </div>
     </div>
 </div>
 
@@ -191,71 +206,77 @@
         const cancelBtn = document.getElementById('cancelEditBtn');
         const editForm = document.getElementById('editSignalForm');
 
-        // Открытие модального окна
-        editBtn.addEventListener('click', function() {
-            editModal.style.display = 'block';
-        });
+        if (editBtn && editModal && editForm) {
+            // Открытие модального окна
+            editBtn.addEventListener('click', function() {
+                editModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            });
 
-        // Закрытие модального окна
-        function closeModal() {
-            editModal.style.display = 'none';
-        }
-
-        closeBtn.addEventListener('click', closeModal);
-        cancelBtn.addEventListener('click', closeModal);
-
-        // Закрытие при клике вне модального окна
-        window.addEventListener('click', function(event) {
-            if (event.target === editModal) {
-                closeModal();
+            // Закрытие модального окна
+            function closeModal() {
+                editModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
             }
-        });
 
-        // Обработка отправки формы
-        editForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = new FormData(editForm);
-            const data = {};
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-            for (let [key, value] of formData.entries()) {
-                if (key !== 'csrfmiddlewaretoken') {
-                    if (key === 'magic_number' || key === 'month' ||
-                        key === 'entry_month' || key === 'entry_day' ||
-                        key === 'takeprofit_month' || key === 'takeprofit_day') {
-                        data[key] = parseInt(value);
-                    } else if (key === 'stoploss' || key === 'risk') {
-                        data[key] = parseFloat(value);
-                    } else {
-                        data[key] = value;
+            // Закрытие при клике вне модального окна
+            window.addEventListener('click', function(event) {
+                if (event.target === editModal) {
+                    closeModal();
+                }
+            });
+
+            // Обработка отправки формы
+            editForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(editForm);
+                const data = {};
+
+                for (let [key, value] of formData.entries()) {
+                    if (key !== 'csrfmiddlewaretoken') {
+                        if (key === 'magic_number' || key === 'month' ||
+                            key === 'entry_month' || key === 'entry_day' ||
+                            key === 'takeprofit_month' || key === 'takeprofit_day') {
+                            data[key] = parseInt(value);
+                        } else if (key === 'stoploss' || key === 'risk') {
+                            data[key] = parseFloat(value);
+                        } else {
+                            data[key] = value;
+                        }
                     }
                 }
-            }
 
-            try {
-                const response = await fetch(`/signal/{{ signal.id }}/update/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                    },
-                    body: JSON.stringify(data)
-                });
+                try {
+                    const signalId = editForm.dataset.signalId;
+                    const response = await fetch(`/signals/api/signals/seasonal/${signalId}/`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                        },
+                        body: JSON.stringify(data)
+                    });
 
-                const result = await response.json();
+                    const result = await response.json();
 
-                if (response.ok) {
-                    showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Произошла ошибка при обновлении сигнала');
+                    }
+
+                    window.showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
                     closeModal();
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
-                } else {
-                    showNotification('error', 'Ошибка!', result.error || 'Произошла ошибка при обновлении сигнала');
+                } catch (error) {
+                    console.error('Error:', error);
+                    window.showNotification('error', 'Ошибка!', error.message || 'Произошла ошибка при отправке данных');
                 }
-            } catch (error) {
-                showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке данных');
-            }
-        });
+            });
+        }
     });
 </script>
 {% endblock %} 

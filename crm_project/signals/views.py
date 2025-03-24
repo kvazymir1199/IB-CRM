@@ -42,31 +42,36 @@ def create_seasonal_signal(request):
         }, status=400)
 
 
-@require_http_methods(["POST"])
+@require_http_methods(["PUT", "POST"])
 def update_signal(request, signal_id):
     try:
         signal = get_object_or_404(SeasonalSignal, id=signal_id)
         
-        # Получаем данные из формы
-        signal.magic_number = request.POST.get('magic_number')
-        signal.symbol = request.POST.get('symbol')
-        signal.direction = request.POST.get('direction')
-        signal.month = request.POST.get('month')
-        signal.entry_month = request.POST.get('entry_month')
-        signal.entry_day = request.POST.get('entry_day')
-        signal.takeprofit_month = request.POST.get('takeprofit_month')
-        signal.takeprofit_day = request.POST.get('takeprofit_day')
-        signal.open_time = request.POST.get('open_time')
-        signal.close_time = request.POST.get('close_time')
-        signal.risk = request.POST.get('risk')
-        signal.stoploss = request.POST.get('stoploss')
-        signal.stoploss_type = request.POST.get('stoploss_type')
+        # Получаем данные из JSON
+        data = json.loads(request.body)
+        
+        # Обновляем поля сигнала
+        for field, value in data.items():
+            if hasattr(signal, field):
+                setattr(signal, field, value)
         
         # Сохраняем изменения
+        signal.full_clean()  # Проверяем валидность данных
         signal.save()
         
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({
+            'message': 'Сигнал успешно обновлен',
+            'id': signal.id
+        })
     except ValidationError as e:
-        return JsonResponse({'status': 'error', 'error': str(e)}, status=400)
+        return JsonResponse({
+            'error': 'Ошибка валидации: ' + ', '.join(e.messages)
+        }, status=400)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': 'Неверный формат JSON'
+        }, status=400)
     except Exception as e:
-        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
