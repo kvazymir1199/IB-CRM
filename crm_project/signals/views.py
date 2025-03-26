@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
@@ -8,8 +8,8 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 import json
-from .models import SeasonalSignal
-from .serializers import SeasonalSignalSerializer
+from .models import SeasonalSignal, Symbol
+from .serializers import SeasonalSignalSerializer, SymbolSerializer
 
 
 @ensure_csrf_cookie
@@ -20,7 +20,16 @@ def home(request):
 
 def signal_detail(request, signal_id):
     signal = get_object_or_404(SeasonalSignal, id=signal_id)
-    return render(request, 'signals/signal_detail.html', {'signal': signal})
+    symbols = Symbol.objects.all().order_by('financial_instrument')
+    return render(request, 'signals/signal_detail.html', {
+        'signal': signal,
+        'symbols': symbols
+    })
+
+
+class SymbolViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Symbol.objects.all().order_by('financial_instrument')
+    serializer_class = SymbolSerializer
 
 
 class SeasonalSignalViewSet(viewsets.ModelViewSet):

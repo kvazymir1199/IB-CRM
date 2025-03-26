@@ -69,10 +69,31 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             // Создание формы для сезонного сигнала
-            function createSeasonalSignalForm() {
+            async function createSeasonalSignalForm() {
+                // Загружаем список символов
+                let symbols = [];
+                try {
+                    const response = await fetch('/api/signals/symbols/');
+                    if (response.ok) {
+                        symbols = await response.json();
+                    } else {
+                        showNotification('error', 'Ошибка!', 'Не удалось загрузить список символов');
+                    }
+                } catch (error) {
+                    showNotification('error', 'Ошибка!', 'Не удалось загрузить список символов');
+                }
+
                 const fields = [
                     { name: 'magic_number', label: 'Magic Number', type: 'number' },
-                    { name: 'symbol', label: 'Символ', type: 'text' },
+                    {
+                        name: 'symbol',
+                        label: 'Символ',
+                        type: 'select',
+                        options: symbols.map(symbol => ({
+                            value: symbol.id,
+                            label: `${symbol.financial_instrument} - ${symbol.company_name} (${symbol.exchange})`
+                        }))
+                    },
                     { name: 'entry_month', label: 'Месяц входа', type: 'number', min: 1, max: 12 },
                     { name: 'entry_day', label: 'День входа', type: 'number', min: 1, max: 31 },
                     { name: 'takeprofit_month', label: 'Месяц выхода', type: 'number', min: 1, max: 12 },
@@ -113,12 +134,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     let input;
                     if (field.type === 'select') {
                         input = document.createElement('select');
-                        field.options.forEach(option => {
-                            const optionElement = document.createElement('option');
-                            optionElement.value = option.value;
-                            optionElement.textContent = option.label;
-                            input.appendChild(optionElement);
-                        });
+                        if (field.options) {
+                            // Добавляем пустой option для select символа
+                            if (field.name === 'symbol') {
+                                const emptyOption = document.createElement('option');
+                                emptyOption.value = '';
+                                emptyOption.textContent = 'Выберите символ';
+                                input.appendChild(emptyOption);
+                            }
+                            field.options.forEach(option => {
+                                const optionElement = document.createElement('option');
+                                optionElement.value = option.value;
+                                optionElement.textContent = option.label;
+                                input.appendChild(optionElement);
+                            });
+                        }
                     } else {
                         input = document.createElement('input');
                         input.type = field.type;

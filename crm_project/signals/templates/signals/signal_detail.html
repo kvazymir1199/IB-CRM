@@ -108,7 +108,13 @@
                 </div>
                 <div class="form-group">
                     <label for="symbol">Символ</label>
-                    <input type="text" id="symbol" name="symbol" class="form-control" value="{{ signal.symbol }}" required>
+                    <select id="symbol" name="symbol" class="form-control" required>
+                        {% for symbol in symbols %}
+                            <option value="{{ symbol.id }}" {% if signal.symbol.id == symbol.id %}selected{% endif %}>
+                                {{ symbol.financial_instrument }} - {{ symbol.company_name }} ({{ symbol.exchange }})
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="entry_month">Месяц входа</label>
