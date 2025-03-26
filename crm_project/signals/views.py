@@ -4,8 +4,12 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
+from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework import status
 import json
 from .models import SeasonalSignal
+from .serializers import SeasonalSignalSerializer
 
 
 @ensure_csrf_cookie
@@ -19,27 +23,31 @@ def signal_detail(request, signal_id):
     return render(request, 'signals/signal_detail.html', {'signal': signal})
 
 
-@require_http_methods(['POST'])
-def create_seasonal_signal(request):
-    try:
-        data = json.loads(request.body)
-        signal = SeasonalSignal.objects.create(**data)
-        return JsonResponse({
-            'id': signal.id,
-            'message': 'Сигнал успешно создан'
-        }, status=201)
-    except IntegrityError as e:
-        if 'UNIQUE constraint' in str(e):
-            return JsonResponse({
-                'error': 'Сигнал с таким Magic Number уже существует'
-            }, status=400)
-        return JsonResponse({
-            'error': 'Ошибка при сохранении сигнала'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'error': str(e)
-        }, status=400)
+class SeasonalSignalViewSet(viewsets.ModelViewSet):
+    queryset = SeasonalSignal.objects.all()
+    serializer_class = SeasonalSignalSerializer
+
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                'id': serializer.instance.id,
+                'message': 'Сигнал успешно создан'
+            }, status=status.HTTP_201_CREATED)
+        except IntegrityError as e:
+            if 'UNIQUE constraint' in str(e):
+                return Response({
+                    'error': 'Сигнал с таким Magic Number уже существует'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'error': 'Ошибка при сохранении сигнала'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @require_http_methods(["PUT", "POST"])

@@ -20,12 +20,6 @@ class Signal(models.Model):
         }
     )
     symbol = models.CharField(max_length=20)
-    month = models.IntegerField(
-        validators=[
-            MinValueValidator(1),
-            MaxValueValidator(12)
-        ]
-    )
     stoploss = models.DecimalField(max_digits=10, decimal_places=2)
     stoploss_type = models.CharField(
         max_length=10,

@@ -73,7 +73,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const fields = [
                     { name: 'magic_number', label: 'Magic Number', type: 'number' },
                     { name: 'symbol', label: 'Символ', type: 'text' },
-                    { name: 'month', label: 'Месяц', type: 'number', min: 1, max: 12 },
                     { name: 'entry_month', label: 'Месяц входа', type: 'number', min: 1, max: 12 },
                     { name: 'entry_day', label: 'День входа', type: 'number', min: 1, max: 31 },
                     { name: 'takeprofit_month', label: 'Месяц выхода', type: 'number', min: 1, max: 12 },
@@ -147,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 for (let [key, value] of formData.entries()) {
                     if (key !== 'csrfmiddlewaretoken') {
-                        if (key === 'magic_number' || key === 'month' ||
+                        if (key === 'magic_number' ||
                             key === 'entry_month' || key === 'entry_day' ||
                             key === 'takeprofit_month' || key === 'takeprofit_day') {
                             data[key] = parseInt(value);
@@ -230,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 for (let [key, value] of formData.entries()) {
                     if (key !== 'csrfmiddlewaretoken') {
-                        if (key === 'magic_number' || key === 'month' ||
+                        if (key === 'magic_number' ||
                             key === 'entry_month' || key === 'entry_day' ||
                             key === 'takeprofit_month' || key === 'takeprofit_day') {
                             data[key] = parseInt(value);
