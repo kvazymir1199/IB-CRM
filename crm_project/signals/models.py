@@ -12,6 +12,20 @@ class StopLossType(models.TextChoices):
     PERCENTAGE = 'PERCENTAGE', 'Percentage'
 
 
+class Symbol(models.Model):
+    financial_instrument = models.CharField(max_length=50, unique=True)
+    company_name = models.CharField(max_length=100)
+    exchange = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.financial_instrument} ({self.exchange})"
+
+    class Meta:
+        ordering = ['financial_instrument']
+        verbose_name = 'Символ'
+        verbose_name_plural = 'Символы'
+
+
 class Signal(models.Model):
     magic_number = models.IntegerField(
         unique=True,
@@ -19,7 +33,11 @@ class Signal(models.Model):
             'unique': 'Сигнал с таким Magic Number уже существует'
         }
     )
-    symbol = models.CharField(max_length=20)
+    symbol = models.ForeignKey(
+        Symbol,
+        on_delete=models.PROTECT,
+        verbose_name='Символ'
+    )
     stoploss = models.DecimalField(max_digits=10, decimal_places=2)
     stoploss_type = models.CharField(
         max_length=10,

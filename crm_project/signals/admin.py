@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import SeasonalSignal
+from .models import SeasonalSignal, Symbol
+
+
+@admin.register(Symbol)
+class SymbolAdmin(admin.ModelAdmin):
+    list_display = ('financial_instrument', 'company_name', 'exchange')
+    search_fields = ('financial_instrument', 'company_name', 'exchange')
+    ordering = ('financial_instrument',)
 
 
 @admin.register(SeasonalSignal)
@@ -10,7 +17,7 @@ class SeasonalSignalAdmin(admin.ModelAdmin):
         'risk'
     )
     list_filter = ('direction', 'stoploss_type', 'entry_month')
-    search_fields = ('symbol', 'magic_number')
+    search_fields = ('magic_number', 'symbol__financial_instrument')
     ordering = ('-id',)
     
     fieldsets = (
