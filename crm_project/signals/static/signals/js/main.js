@@ -94,9 +94,45 @@ document.addEventListener('DOMContentLoaded', function () {
                             label: `${symbol.financial_instrument} - ${symbol.company_name} (${symbol.exchange})`
                         }))
                     },
-                    { name: 'entry_month', label: 'Месяц входа', type: 'number', min: 1, max: 12 },
+                    {
+                        name: 'entry_month',
+                        label: 'Месяц входа',
+                        type: 'select',
+                        options: [
+                            { value: 1, label: 'Январь' },
+                            { value: 2, label: 'Февраль' },
+                            { value: 3, label: 'Март' },
+                            { value: 4, label: 'Апрель' },
+                            { value: 5, label: 'Май' },
+                            { value: 6, label: 'Июнь' },
+                            { value: 7, label: 'Июль' },
+                            { value: 8, label: 'Август' },
+                            { value: 9, label: 'Сентябрь' },
+                            { value: 10, label: 'Октябрь' },
+                            { value: 11, label: 'Ноябрь' },
+                            { value: 12, label: 'Декабрь' }
+                        ]
+                    },
                     { name: 'entry_day', label: 'День входа', type: 'number', min: 1, max: 31 },
-                    { name: 'takeprofit_month', label: 'Месяц выхода', type: 'number', min: 1, max: 12 },
+                    {
+                        name: 'takeprofit_month',
+                        label: 'Месяц выхода',
+                        type: 'select',
+                        options: [
+                            { value: 1, label: 'Январь' },
+                            { value: 2, label: 'Февраль' },
+                            { value: 3, label: 'Март' },
+                            { value: 4, label: 'Апрель' },
+                            { value: 5, label: 'Май' },
+                            { value: 6, label: 'Июнь' },
+                            { value: 7, label: 'Июль' },
+                            { value: 8, label: 'Август' },
+                            { value: 9, label: 'Сентябрь' },
+                            { value: 10, label: 'Октябрь' },
+                            { value: 11, label: 'Ноябрь' },
+                            { value: 12, label: 'Декабрь' }
+                        ]
+                    },
                     { name: 'takeprofit_day', label: 'День выхода', type: 'number', min: 1, max: 31 },
                     { name: 'stoploss', label: 'Стоп-лосс', type: 'number', step: '0.01' },
                     { name: 'risk', label: 'Риск (%)', type: 'number', step: '0.01' },

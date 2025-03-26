@@ -40,7 +40,7 @@
             <div class="detail-grid">
                 <div class="detail-item">
                     <div class="detail-label">Месяц входа</div>
-                    <div class="detail-value">{{ signal.entry_month }}</div>
+                    <div class="detail-value">{{ months|get_item:signal.entry_month }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">День входа</div>
@@ -58,7 +58,7 @@
             <div class="detail-grid">
                 <div class="detail-item">
                     <div class="detail-label">Месяц выхода</div>
-                    <div class="detail-value">{{ signal.takeprofit_month }}</div>
+                    <div class="detail-value">{{ months|get_item:signal.takeprofit_month }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">День выхода</div>
@@ -118,7 +118,13 @@
                 </div>
                 <div class="form-group">
                     <label for="entry_month">Месяц входа</label>
-                    <input type="number" id="entry_month" name="entry_month" class="form-control" value="{{ signal.entry_month }}" min="1" max="12" required>
+                    <select id="entry_month" name="entry_month" class="form-control" required>
+                        {% for month_num, month_name in months.items %}
+                            <option value="{{ month_num }}" {% if signal.entry_month == month_num %}selected{% endif %}>
+                                {{ month_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="entry_day">День входа</label>
@@ -126,7 +132,13 @@
                 </div>
                 <div class="form-group">
                     <label for="takeprofit_month">Месяц выхода</label>
-                    <input type="number" id="takeprofit_month" name="takeprofit_month" class="form-control" value="{{ signal.takeprofit_month }}" min="1" max="12" required>
+                    <select id="takeprofit_month" name="takeprofit_month" class="form-control" required>
+                        {% for month_num, month_name in months.items %}
+                            <option value="{{ month_num }}" {% if signal.takeprofit_month == month_num %}selected{% endif %}>
+                                {{ month_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="takeprofit_day">День выхода</label>
