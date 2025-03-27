@@ -69,14 +69,70 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             // Создание формы для сезонного сигнала
-            function createSeasonalSignalForm() {
+            async function createSeasonalSignalForm() {
+                // Загружаем список символов
+                let symbols = [];
+                try {
+                    const response = await fetch('/api/signals/symbols/');
+                    if (response.ok) {
+                        symbols = await response.json();
+                    } else {
+                        showNotification('error', 'Ошибка!', 'Не удалось загрузить список символов');
+                    }
+                } catch (error) {
+                    showNotification('error', 'Ошибка!', 'Не удалось загрузить список символов');
+                }
+
                 const fields = [
                     { name: 'magic_number', label: 'Magic Number', type: 'number' },
-                    { name: 'symbol', label: 'Символ', type: 'text' },
-                    { name: 'month', label: 'Месяц', type: 'number', min: 1, max: 12 },
-                    { name: 'entry_month', label: 'Месяц входа', type: 'number', min: 1, max: 12 },
+                    {
+                        name: 'symbol',
+                        label: 'Символ',
+                        type: 'select',
+                        options: symbols.map(symbol => ({
+                            value: symbol.id,
+                            label: `${symbol.financial_instrument} - ${symbol.company_name} (${symbol.exchange})`
+                        }))
+                    },
+                    {
+                        name: 'entry_month',
+                        label: 'Месяц входа',
+                        type: 'select',
+                        options: [
+                            { value: 1, label: 'Январь' },
+                            { value: 2, label: 'Февраль' },
+                            { value: 3, label: 'Март' },
+                            { value: 4, label: 'Апрель' },
+                            { value: 5, label: 'Май' },
+                            { value: 6, label: 'Июнь' },
+                            { value: 7, label: 'Июль' },
+                            { value: 8, label: 'Август' },
+                            { value: 9, label: 'Сентябрь' },
+                            { value: 10, label: 'Октябрь' },
+                            { value: 11, label: 'Ноябрь' },
+                            { value: 12, label: 'Декабрь' }
+                        ]
+                    },
                     { name: 'entry_day', label: 'День входа', type: 'number', min: 1, max: 31 },
-                    { name: 'takeprofit_month', label: 'Месяц выхода', type: 'number', min: 1, max: 12 },
+                    {
+                        name: 'takeprofit_month',
+                        label: 'Месяц выхода',
+                        type: 'select',
+                        options: [
+                            { value: 1, label: 'Январь' },
+                            { value: 2, label: 'Февраль' },
+                            { value: 3, label: 'Март' },
+                            { value: 4, label: 'Апрель' },
+                            { value: 5, label: 'Май' },
+                            { value: 6, label: 'Июнь' },
+                            { value: 7, label: 'Июль' },
+                            { value: 8, label: 'Август' },
+                            { value: 9, label: 'Сентябрь' },
+                            { value: 10, label: 'Октябрь' },
+                            { value: 11, label: 'Ноябрь' },
+                            { value: 12, label: 'Декабрь' }
+                        ]
+                    },
                     { name: 'takeprofit_day', label: 'День выхода', type: 'number', min: 1, max: 31 },
                     { name: 'stoploss', label: 'Стоп-лосс', type: 'number', step: '0.01' },
                     { name: 'risk', label: 'Риск (%)', type: 'number', step: '0.01' },
@@ -114,12 +170,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     let input;
                     if (field.type === 'select') {
                         input = document.createElement('select');
-                        field.options.forEach(option => {
-                            const optionElement = document.createElement('option');
-                            optionElement.value = option.value;
-                            optionElement.textContent = option.label;
-                            input.appendChild(optionElement);
-                        });
+                        if (field.options) {
+                            // Добавляем пустой option для select символа
+                            if (field.name === 'symbol') {
+                                const emptyOption = document.createElement('option');
+                                emptyOption.value = '';
+                                emptyOption.textContent = 'Выберите символ';
+                                input.appendChild(emptyOption);
+                            }
+                            field.options.forEach(option => {
+                                const optionElement = document.createElement('option');
+                                optionElement.value = option.value;
+                                optionElement.textContent = option.label;
+                                input.appendChild(optionElement);
+                            });
+                        }
                     } else {
                         input = document.createElement('input');
                         input.type = field.type;
@@ -147,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 for (let [key, value] of formData.entries()) {
                     if (key !== 'csrfmiddlewaretoken') {
-                        if (key === 'magic_number' || key === 'month' ||
+                        if (key === 'magic_number' ||
                             key === 'entry_month' || key === 'entry_day' ||
                             key === 'takeprofit_month' || key === 'takeprofit_day') {
                             data[key] = parseInt(value);
@@ -230,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 for (let [key, value] of formData.entries()) {
                     if (key !== 'csrfmiddlewaretoken') {
-                        if (key === 'magic_number' || key === 'month' ||
+                        if (key === 'magic_number' ||
                             key === 'entry_month' || key === 'entry_day' ||
                             key === 'takeprofit_month' || key === 'takeprofit_day') {
                             data[key] = parseInt(value);

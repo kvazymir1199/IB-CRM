@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  web:
+    build: 
+      context: ./crm_project
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./crm_project:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  celery:
+    build:
+      context: ./crm_project
+      dockerfile: Dockerfile.celery
+    volumes:
+      - ./crm_project:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - web
+    networks:
+      - app-network
+
+  celery-beat:
+    build:
+      context: ./crm_project
+      dockerfile: Dockerfile.celery-beat
+    volumes:
+      - ./crm_project:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - web
+    networks:
+      - app-network
+
+  trading-bot:
+    build:
+      context: ./crm_project
+      dockerfile: Dockerfile.trading-bot
+    volumes:
+      - ./crm_project:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - IB_HOST=host.docker.internal
+      - IB_PORT=4002
+      - IB_CLIENT_ID=124
+    depends_on:
+      - web
+    restart: unless-stopped
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+
+volumes:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge 

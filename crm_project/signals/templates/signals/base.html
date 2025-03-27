@@ -1,4 +1,6 @@
 {% load static %}
+{% load signal_filters %}
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -65,11 +67,11 @@
     </div>
 
     <!-- JavaScript -->
-    <script src="{% static 'signals/js/utils.js' %}"></script>
-    <script src="{% static 'signals/js/modal.js' %}"></script>
-    <script src="{% static 'signals/js/forms.js' %}"></script>
-    <script src="{% static 'signals/js/filters.js' %}"></script>
-    <script src="{% static 'signals/js/main.js' %}"></script>
+    <script src="{% static 'signals/js/utils.js' %}?v=2"></script>
+    <script src="{% static 'signals/js/modal.js' %}?v=2"></script>
+    <script src="{% static 'signals/js/forms.js' %}?v=2"></script>
+    <script src="{% static 'signals/js/filters.js' %}?v=2"></script>
+    <script src="{% static 'signals/js/main.js' %}?v=2"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html> 

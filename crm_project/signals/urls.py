@@ -7,6 +7,7 @@ app_name = 'signals'
 # Создаем router для API
 router = DefaultRouter()
 router.register(r'seasonal', views.SeasonalSignalViewSet, basename='seasonal-signal')
+router.register(r'symbols', views.SymbolViewSet, basename='symbol')
 
 urlpatterns = [
     path('', views.home, name='home'),
