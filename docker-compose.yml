@@ -51,6 +51,24 @@ services:
     networks:
       - app-network
 
+  trading-bot:
+    build:
+      context: ./crm_project
+      dockerfile: Dockerfile.trading-bot
+    volumes:
+      - ./crm_project:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - IB_HOST=host.docker.internal
+      - IB_PORT=4002
+      - IB_CLIENT_ID=124
+    depends_on:
+      - web
+    restart: unless-stopped
+    network_mode: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   redis:
     image: redis:7-alpine
     ports:
