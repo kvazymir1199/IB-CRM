@@ -14,34 +14,42 @@ from .serializers import SeasonalSignalSerializer, SymbolSerializer
 
 # Словарь для отображения месяцев
 MONTHS = {
-    1: "Январь",
-    2: "Февраль",
-    3: "Март",
-    4: "Апрель",
-    5: "Май",
-    6: "Июнь",
-    7: "Июль",
-    8: "Август",
-    9: "Сентябрь",
-    10: "Октябрь",
-    11: "Ноябрь",
-    12: "Декабрь",
+    1: 'Январь',
+    2: 'Февраль',
+    3: 'Март',
+    4: 'Апрель',
+    5: 'Май',
+    6: 'Июнь',
+    7: 'Июль',
+    8: 'Август',
+    9: 'Сентябрь',
+    10: 'Октябрь',
+    11: 'Ноябрь',
+    12: 'Декабрь'
 }
 
 
 @ensure_csrf_cookie
 def home(request):
     signals = SeasonalSignal.objects.all().order_by("-id")
-    return render(request, "signals/home.html", {"signals": signals, "months": MONTHS})
+    return render(
+        request, 
+        "signals/home.html", 
+        {"signals": signals, "months": MONTHS}
+    )
 
 
 def signal_detail(request, signal_id):
     signal = get_object_or_404(SeasonalSignal, id=signal_id)
     symbols = Symbol.objects.all().order_by("financial_instrument")
     return render(
-        request,
-        "signals/signal_detail.html",
-        {"signal": signal, "symbols": symbols, "months": MONTHS},
+        request, 
+        "signals/signal_detail.html", 
+        {
+            "signal": signal, 
+            "symbols": symbols,
+            "months": MONTHS
+        }
     )
 
 
@@ -60,7 +68,10 @@ class SeasonalSignalViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             return Response(
-                {"id": serializer.instance.id, "message": "Сигнал успешно создан"},
+                {
+                    "id": serializer.instance.id, 
+                    "message": "Сигнал успешно создан"
+                },
                 status=status.HTTP_201_CREATED,
             )
         except IntegrityError as e:
@@ -74,32 +85,30 @@ class SeasonalSignalViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-
-@require_http_methods(["PUT", "POST"])
-def update_signal(request, signal_id):
-    try:
-        signal = get_object_or_404(SeasonalSignal, id=signal_id)
-
-        # Получаем данные из JSON
-        data = json.loads(request.body)
-
-        # Обновляем поля сигнала
-        for field, value in data.items():
-            if hasattr(signal, field):
-                setattr(signal, field, value)
-
-        # Сохраняем изменения
-        signal.full_clean()  # Проверяем валидность данных
-        signal.save()
-
-        return JsonResponse({"message": "Сигнал успешно обновлен", "id": signal.id})
-    except ValidationError as e:
-        return JsonResponse(
-            {"error": "Ошибка валидации: " + ", ".join(e.messages)}, status=400
-        )
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Неверный формат JSON"}, status=400)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response({
+                "message": "Сигнал успешно обновлен",
+                "id": instance.id
+            })
+        except ValidationError as e:
+            return Response(
+                {
+                    "error": "Ошибка валидации: " + ", ".join(e.messages)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
