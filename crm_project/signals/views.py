@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
@@ -12,17 +12,36 @@ from .models import SeasonalSignal, Symbol
 from .serializers import SeasonalSignalSerializer, SymbolSerializer
 
 
+# Словарь для отображения месяцев
+MONTHS = {
+    1: "Январь",
+    2: "Февраль",
+    3: "Март",
+    4: "Апрель",
+    5: "Май",
+    6: "Июнь",
+    7: "Июль",
+    8: "Август",
+    9: "Сентябрь",
+    10: "Октябрь",
+    11: "Ноябрь",
+    12: "Декабрь",
+}
+
+
 @ensure_csrf_cookie
 def home(request):
     signals = SeasonalSignal.objects.all().order_by("-id")
-    return render(request, "signals/home.html", {"signals": signals})
+    return render(request, "signals/home.html", {"signals": signals, "months": MONTHS})
 
 
 def signal_detail(request, signal_id):
     signal = get_object_or_404(SeasonalSignal, id=signal_id)
     symbols = Symbol.objects.all().order_by("financial_instrument")
     return render(
-        request, "signals/signal_detail.html", {"signal": signal, "symbols": symbols}
+        request,
+        "signals/signal_detail.html",
+        {"signal": signal, "symbols": symbols, "months": MONTHS},
     )
 
 
