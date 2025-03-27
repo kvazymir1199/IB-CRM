@@ -4,7 +4,14 @@
 import os
 import sys
 import time
+import django
 from ib_insync import IB
+from trading_bot.core.bot_signal_manager import BotSignalManager
+
+
+# Настраиваем Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_project.settings')
+django.setup()
 
 
 class TradingBot:
@@ -39,6 +46,17 @@ class TradingBot:
         self.client_id = client_id or int(os.getenv('IB_CLIENT_ID', '123'))
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+
+        print("Инициализация менеджера сигналов...")
+        sys.stdout.flush()
+        try:
+            self.signal_manager = BotSignalManager()
+            print("Менеджер сигналов успешно инициализирован")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"Ошибка при инициализации менеджера сигналов: {str(e)}")
+            sys.stdout.flush()
+            raise
 
         print(f"Параметры подключения:")
         print(f"- Хост: {self.host}")
@@ -112,12 +130,18 @@ class TradingBot:
         try:
             print("Бот запущен и ожидает сигналов...")
             sys.stdout.flush()
+            
+            # Выводим информацию об активных сигналах
+            self.signal_manager.print_active_signals()
+            
             while True:
                 if not self.is_connected():
                     print("Потеряно соединение, переподключение...")
                     sys.stdout.flush()
                     self._connect()
-                time.sleep(1)  # Проверяем соединение каждую секунду
+                # Проверяем сигналы каждые 5 секунд
+                self.signal_manager.print_active_signals()
+                time.sleep(5)  # Проверяем каждые 5 секунд
         except KeyboardInterrupt:
             print("\nПолучен сигнал завершения работы")
             sys.stdout.flush()
