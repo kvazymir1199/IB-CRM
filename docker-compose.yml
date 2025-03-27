@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   web:
-    build: 
+    build:
       context: ./crm_project
       dockerfile: Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
@@ -12,44 +12,54 @@ services:
       - "8000:8000"
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_ENV=development
     depends_on:
       - redis
-    networks:
-      - app-network
 
   celery:
     build:
       context: ./crm_project
-      dockerfile: Dockerfile.celery
+      dockerfile: Dockerfile
+    command: celery -A crm_project worker -l INFO
     volumes:
       - ./crm_project:/app
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_ENV=development
     depends_on:
-      - redis
       - web
-    networks:
-      - app-network
+      - redis
 
   celery-beat:
     build:
       context: ./crm_project
-      dockerfile: Dockerfile.celery-beat
+      dockerfile: Dockerfile
+    command: celery -A crm_project beat -l INFO
     volumes:
       - ./crm_project:/app
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_ENV=development
     depends_on:
-      - redis
       - web
-    networks:
-      - app-network
+      - redis
+
+  trading-bot:
+    build:
+      context: ./crm_project
+      dockerfile: Dockerfile.trading
+    volumes:
+      - ./crm_project:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - DJANGO_ENV=development
+      - IB_HOST=host.docker.internal
+      - IB_PORT=7496
+      - IB_CLIENT_ID=1
+    network_mode: "host"
+    depends_on:
+      - web
+      - redis
 
   redis:
     image: redis:7-alpine
@@ -57,12 +67,10 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    networks:
-      - app-network
 
 volumes:
   redis-data:
 
 networks:
-  app-network:
-    driver: bridge 
+  default:
+    name: app-network 
