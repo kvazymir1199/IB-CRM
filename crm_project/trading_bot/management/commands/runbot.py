@@ -9,14 +9,7 @@ class Command(BaseCommand):
         self.stdout.write('Запуск торгового бота...')
         
         bot = TradingBot()
-        
-        try:
-            while True:
-                results = bot.check_signals()
-                self.stdout.write(f'Результаты проверки сигналов: {results}')
-                time.sleep(60)  # Проверка каждую минуту
+
+        bot.run()
+
                 
-        except KeyboardInterrupt:
-            self.stdout.write('Остановка бота...')
-        finally:
-            bot.disconnect() 

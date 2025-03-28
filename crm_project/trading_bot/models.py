@@ -2,6 +2,12 @@ from django.db import models
 from signals.models import SeasonalSignal
 
 
+class TradeStatus(models.TextChoices):
+    AWAITING = "awaiting", "Awaiting"
+    OPEN = "open", "Trade Open"
+    CLOSE = "close", "Trade Close"
+
+
 class BotSeasonalSignal(models.Model):
     """
     Модель для хранения информации о торговых сигналах бота.
@@ -28,6 +34,11 @@ class BotSeasonalSignal(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True,
         verbose_name='Обновлен'
+    )
+    status = models.CharField(
+        max_length=10,  # Максимальная длина строки
+        choices=TradeStatus.choices,
+        default=TradeStatus.AWAITING,
     )
 
     class Meta:

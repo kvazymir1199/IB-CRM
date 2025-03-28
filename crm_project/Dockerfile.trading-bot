@@ -4,6 +4,17 @@ FROM python:3.11-slim
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
+# Установка зависимостей и временной зоны
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    tzdata && \
+    rm -rf /var/lib/apt/lists/* && \
+    ln -snf /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && \
+    echo "Asia/Bangkok" > /etc/timezone
+
+# Устанавливаем переменную окружения для Python
+ENV TZ=Asia/Bangkok
+
 # Копируем файлы зависимостей
 COPY requirements.txt .
 
@@ -16,4 +27,3 @@ COPY . .
 # Запускаем торгового бота с отключенной буферизацией
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
-CMD ["python", "-u", "trading_bot/core/bot.py"] 

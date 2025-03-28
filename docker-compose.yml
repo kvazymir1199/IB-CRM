@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web:
     build: 
@@ -57,15 +55,24 @@ services:
       dockerfile: Dockerfile.trading-bot
     volumes:
       - ./crm_project:/app
-    environment:
-      - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - IB_HOST=host.docker.internal
-      - IB_PORT=4002
-      - IB_CLIENT_ID=124
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     depends_on:
       - web
-    restart: unless-stopped
-    network_mode: host
+      - redis
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - PYTHONPATH=/app
+      - IB_HOST=host.docker.internal
+      - IB_PORT=4002
+      - IB_CLIENT_ID=123
+    command: >
+      sh -c "python manage.py makemigrations &&
+             python manage.py migrate &&
+             python manage.py import_symbols &&
+             python manage.py runbot"
+    networks:
+      - app-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

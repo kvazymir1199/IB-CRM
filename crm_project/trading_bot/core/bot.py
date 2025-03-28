@@ -4,9 +4,13 @@
 import os
 import sys
 import time
+from datetime import datetime
+
 import django
+import pytz
 from ib_insync import IB
 from trading_bot.core.bot_signal_manager import BotSignalManager
+from django.utils import timezone
 
 
 # Настраиваем Django
@@ -43,7 +47,7 @@ class TradingBot:
         self.connected = False
         self.host = host or os.getenv('IB_HOST', '127.0.0.1')
         self.port = port or int(os.getenv('IB_PORT', '4002'))
-        self.client_id = client_id or int(os.getenv('IB_CLIENT_ID', '123'))
+        self.client_id = client_id or int(os.getenv('IB_CLIENT_ID', '1234'))
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
@@ -58,13 +62,13 @@ class TradingBot:
             sys.stdout.flush()
             raise
 
-        print(f"Параметры подключения:")
+        print("Параметры подключения:")
         print(f"- Хост: {self.host}")
         print(f"- Порт: {self.port}")
         print(f"- ID клиента: {self.client_id}")
         sys.stdout.flush()
 
-        self._connect()
+        #self._connect()
 
     def _connect(self) -> None:
         """
@@ -131,17 +135,19 @@ class TradingBot:
             print("Бот запущен и ожидает сигналов...")
             sys.stdout.flush()
             
-            # Выводим информацию об активных сигналах
-            self.signal_manager.print_active_signals()
-            
             while True:
-                if not self.is_connected():
-                    print("Потеряно соединение, переподключение...")
-                    sys.stdout.flush()
-                    self._connect()
-                # Проверяем сигналы каждые 5 секунд
-                self.signal_manager.print_active_signals()
-                time.sleep(5)  # Проверяем каждые 5 секунд
+                # if not self.is_connected():
+                #     print("Потеряно соединение, переподключение...")
+                #     sys.stdout.flush()
+                #     self._connect()
+
+                #print(self.signal_manager.get_active_signals())
+                self.signal_manager.check_signals()
+                # Ждем 5 секунд перед следующей проверкой
+                print("Ожидание 5 секунд перед следующей проверкой...")
+                sys.stdout.flush()
+                time.sleep(5)
+                
         except KeyboardInterrupt:
             print("\nПолучен сигнал завершения работы")
             sys.stdout.flush()
@@ -164,6 +170,7 @@ if __name__ == "__main__":
     if bot.is_connected():
         print("Бот успешно подключен и готов к работе")
         sys.stdout.flush()
+
         bot.run()  # Запускаем бота в режиме ожидания
     else:
         print("Не удалось подключить бота")
