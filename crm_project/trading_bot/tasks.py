@@ -7,10 +7,9 @@ from celery import shared_task
 from django.apps import apps
 from django.core.exceptions import AppRegistryNotReady
 
-logger = logging.getLogger("trading_bot")
+logger = logging.getLogger('trading_bot')
 
-
-@shared_task(queue="signals_queue")
+@shared_task(queue='signals_queue')
 def check_signals():
     """
     Задача для проверки и создания сигналов
@@ -21,7 +20,6 @@ def check_signals():
         apps.check_apps_ready()
         # Импортируем signal_manager только когда задача выполняется
         from trading_bot.signal_manager import signal_manager
-
         logger.info("Проверка сигналов завершена")
         return signal_manager.check_signals()
     except AppRegistryNotReady:
@@ -31,15 +29,23 @@ def check_signals():
         return "Waiting for Django apps to be ready..."
 
 
-@shared_task(queue="bot_queue")
+@shared_task(queue='bot_queue')
 def manage_bot():
     """Задача для управления торговым ботом"""
     logger.info("Запуск задачи manage_bot")
     try:
         # Проверяем готовность приложений Django
         apps.check_apps_ready()
+        
+        # Проверяем состояние бота
+        from trading_bot.models import BotState
+        bot_state = BotState.get_state()
+        
+        if not bot_state.is_running:
+            logger.info("Бот остановлен, пропускаем выполнение")
+            return "Bot is stopped"
+            
         from trading_bot.bot import bot
-
         logger.info("Бот запущен")
         return bot.run()
     except AppRegistryNotReady:
