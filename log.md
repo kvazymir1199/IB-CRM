@@ -463,7 +463,7 @@
    ```
 2. Исправлен импорт BotSignalManager:
    ```python
-   from trading_bot.core.bot_signal_manager import BotSignalManager
+   from trading_bot.bot_signal_manager import BotSignalManager
    ```
 3. Добавлено подробное логирование:
    - Процесс инициализации менеджера сигналов

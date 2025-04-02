@@ -79,12 +79,33 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Настройки Celery
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_DEFAULT_QUEUE = 'default'
+CELERY_QUEUES = {
+    'bot_queue': {
+        'exchange': 'bot_queue',
+        'routing_key': 'bot_queue',
+        'queue_arguments': {'x-max-priority': 10},
+    },
+    'signals_queue': {
+        'exchange': 'signals_queue',
+        'routing_key': 'signals_queue',
+        'queue_arguments': {'x-max-priority': 5},
+    },
+}
+# Настройки IB Gateway
+IB_HOST = os.getenv('IB_HOST', 'host.docker.internal')
+IB_PORT = int(os.getenv('IB_PORT', '4002'))
+IB_CLIENT_ID = int(os.getenv('IB_CLIENT_ID', '1234'))
+
+# Создаем директорию для логов
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
 
 # Настройки логирования
 LOGGING = {
@@ -95,15 +116,19 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'simple',
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': 'trading_bot.log',
+            'filename': os.path.join(LOGS_DIR, 'trading_bot.log'),
             'formatter': 'verbose',
         },
     },
@@ -111,12 +136,17 @@ LOGGING = {
         'trading_bot': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
         },
         'trading_bot.core.bot_signal_manager': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
-            'propagate': True,
+            'propagate': False,
+        },
+        'bot': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }

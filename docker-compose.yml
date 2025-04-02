@@ -2,7 +2,7 @@ services:
   web:
     build: 
       context: ./crm_project
-      dockerfile: Dockerfile
+      dockerfile: dockerfiles/Dockerfile.web
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./crm_project:/app
@@ -17,26 +17,66 @@ services:
     networks:
       - app-network
 
-  celery:
-    build:
+#  celery:
+#    build:
+#      context: ./crm_project
+#      dockerfile: dockerfiles/Dockerfile.celery
+#    volumes:
+#      - ./crm_project:/app
+#    environment:
+#      - DJANGO_SETTINGS_MODULE=crm_project.settings
+#      - CELERY_BROKER_URL=redis://redis:6379/0
+#      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+#    depends_on:
+#      - redis
+#      - web
+#    networks:
+#      - app-network
+
+  celery-bot:
+    build: 
       context: ./crm_project
-      dockerfile: Dockerfile.celery
+      dockerfile: dockerfiles/Dockerfile.celery-bot
     volumes:
       - ./crm_project:/app
+    depends_on:
+      - web
+      - redis
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - IB_HOST=host.docker.internal
+      - IB_PORT=4002
+      - IB_CLIENT_ID=1234
+      - PYTHONUNBUFFERED=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  celery-signals:
+    build: 
+      context: ./crm_project
+      dockerfile: dockerfiles/Dockerfile.celery-signals
+    volumes:
+      - ./crm_project:/app
     depends_on:
-      - redis
       - web
+      - redis
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
     networks:
       - app-network
 
   celery-beat:
     build:
       context: ./crm_project
-      dockerfile: Dockerfile.celery-beat
+      dockerfile: dockerfiles/Dockerfile.celery-beat
     volumes:
       - ./crm_project:/app
     environment:
@@ -48,33 +88,6 @@ services:
       - web
     networks:
       - app-network
-
-  trading-bot:
-    build:
-      context: ./crm_project
-      dockerfile: Dockerfile.trading-bot
-    volumes:
-      - ./crm_project:/app
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-    depends_on:
-      - web
-      - redis
-    environment:
-      - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - PYTHONPATH=/app
-      - IB_HOST=host.docker.internal
-      - IB_PORT=4002
-      - IB_CLIENT_ID=123
-    command: >
-      sh -c "python manage.py makemigrations &&
-             python manage.py migrate &&
-             python manage.py import_symbols &&
-             python manage.py runbot"
-    networks:
-      - app-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   redis:
     image: redis:7-alpine

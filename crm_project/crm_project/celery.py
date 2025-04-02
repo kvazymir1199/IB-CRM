@@ -4,6 +4,7 @@
 import os
 from celery import Celery
 from django.conf import settings
+from celery.schedules import crontab
 
 # Устанавливаем переменную окружения для настроек Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_project.settings')
@@ -26,9 +27,14 @@ app.conf.beat_schedule = {
         'task': 'trading_bot.tasks.check_signals',
         'schedule': 60.0,  # каждую минуту
     },
+    "manage_bot": {
+        'task': 'trading_bot.tasks.manage_bot',
+        'schedule': 15.0,
+    }
 }
+
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):
     """Тестовая задача"""
-    print(f'Request: {self.request!r}') 
+    print(f'Request: {self.request!r}')

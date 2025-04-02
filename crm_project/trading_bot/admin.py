@@ -11,6 +11,7 @@ class BotSeasonalSignalAdmin(admin.ModelAdmin):
     Административный интерфейс для BotSeasonalSignal
     """
     list_display = (
+        "pk",
         'signal',
         'entry_date',
         'exit_date',

@@ -3,36 +3,21 @@
 """
 
 import logging
-import os
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
-from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from datetime import datetime, timedelta
 import dataclasses
 import pytz
 
 from django.utils import timezone
-from ib_insync import MarketOrder, LimitOrder, StopOrder, ContFuture, IB
+from ib_insync import LimitOrder, StopOrder, ContFuture, IB
 from trading_bot.models import BotSeasonalSignal
 
 if TYPE_CHECKING:
-    from .bot import TradingBot
-
-# Создаем директорию для логов, если она не существует
-log_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-log_file = os.path.join(log_dir, 'trading_bot.log')
-os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    pass
 
 # Создаем логгер для модуля
 logger = logging.getLogger('trading_bot.core.bot_signal_manager')
-
-# Проверяем права доступа к файлу логов
-try:
-    with open(log_file, 'a') as f:
-        pass
-    os.remove(log_file)
-except (IOError, OSError) as e:
-    logger.error(f"Ошибка доступа к файлу логов: {e}")
 
 
 @dataclasses.dataclass
@@ -83,25 +68,17 @@ class BotSignalManager:
     """
     Класс для управления сигналами торгового бота
     """
+
     def __init__(self, ib_connector: IB):
         self.ib_connector = ib_connector
-        self.logger = logging.getLogger('trading_bot.core.bot_signal_manager')
+        self.logger = logger  # Используем тот же логгер
 
-    # def process_signal(self, signal: Dict[str, Any]) -> None:
-    #     """
-    #     Обработка торгового сигнала
-    #
-    #     Args:
-    #         signal: Словарь с параметрами сигнала
-    #     """
-    #     try:
-    #         self.logger.info(f"Начало обработки сигнала: {signal}")
-    #         self._validate_signal(signal)
-    #         self._open_order(signal)
-    #         self.logger.info("Сигнал успешно обработан")
-    #     except Exception as e:
-    #         self.logger.error(f"Ошибка при обработке сигнала: {e}")
-    #         raise
+    def get_current_time(self) -> datetime:
+        """
+        Получение текущего времени от IB Gateway
+        """ 
+
+        return self.ib_connector.reqCurrentTime()
 
     def manage_signals(self) -> None:
         """
@@ -113,34 +90,17 @@ class BotSignalManager:
             signals = BotSeasonalSignal.objects.all(
                 # exit_date__gt=timezone.now()
             ).select_related("signal", "signal__symbol")
-            
+
             self.logger.info(f"Найдено сигналов: {signals.count()}")
-            
+            self.current_time = self.get_current_time()
+            if self.current_time is None:
+                self.logger.error("Не удалось получить текущее время")
+                return
             for signal in signals:
-                self.logger.info(f"Обработка сигнала ID: {signal.id}")
-                self.logger.info(f"Статус сигнала: {signal.status}")
-                self.logger.info(f"Дата входа: {signal.entry_date}")
-                self.logger.info(f"Дата выхода: {signal.exit_date}")
-                
-                if signal.status == "awaiting":
-                    self.logger.info(f"Сигнал {signal.id} в статусе awaiting")
-                    if signal.entry_date <= timezone.now():
-                        self.logger.info(f"Сигнал {signal.id} готов к открытию позиции")
-                        # TODO: Добавить логику открытия позиции
-                        signal.status = "open"
-                        signal.save()
-                        self.logger.info(f"Статус сигнала {signal.id} изменен на open")
-                elif signal.status == "open":
-                    self.logger.info(f"Сигнал {signal.id} в статусе open")
-                    if signal.exit_date <= timezone.now():
-                        self.logger.info(f"Сигнал {signal.id} готов к закрытию позиции")
-                        # TODO: Добавить логику закрытия позиции
-                        signal.status = "close"
-                        signal.save()
-                        self.logger.info(f"Статус сигнала {signal.id} изменен на close")
-                
+                self._handle_signal(signal)
+
             self.logger.info("Завершение работы метода manage_signals")
-            
+
         except Exception as e:
             self.logger.error(f"Ошибка в методе manage_signals: {str(e)}")
             raise
@@ -156,7 +116,7 @@ class BotSignalManager:
             self.logger.info(f"Обработка сигнала {_signal.pk}")
             entry_time = timezone.localtime(_signal.entry_date)
             exit_time = timezone.localtime(_signal.exit_date)
-
+            logger.info(f"Время сейчас: {self.current_time}")
             if not _signal.order_id:
                 self.logger.info(f"Сигнал {_signal.pk} не имеет открытого ордера")
 
@@ -415,30 +375,30 @@ class BotSignalManager:
             stop_loss = float(stop_loss)
             multiplier = float(multiplier)
             risk_percent = float(risk_percent)
-            
+
             self.logger.info(f"Расчет размера позиции:")
             self.logger.info(f"Баланс: {balance}")
             self.logger.info(f"Цена входа: {entry_price}")
             self.logger.info(f"Стоп-лосс: {stop_loss}")
             self.logger.info(f"Множитель: {multiplier}")
             self.logger.info(f"Процент риска: {risk_percent}%")
-            
+
             risk_amount = balance * (risk_percent / 100)  # Сколько денег рискуем
             risk_per_unit = abs(entry_price - stop_loss) * multiplier  # Убыток на 1 контракт
-            
+
             self.logger.info(f"Сумма риска: {risk_amount}")
             self.logger.info(f"Риск на 1 контракт: {risk_per_unit}")
-            
+
             if risk_per_unit == 0:
                 self.logger.warning("Риск на контракт равен 0, возвращаем 1 контракт")
                 return 1
-                
+
             quantity = risk_amount / risk_per_unit  # Количество контрактов
             result = max(1, int(quantity))  # Минимум 1 контракт
-            
+
             self.logger.info(f"Рассчитанное количество контрактов: {result}")
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Ошибка при расчете размера позиции: {str(e)}")
             self.logger.info("Возвращаем минимальный размер позиции: 1")
