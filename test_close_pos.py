@@ -40,9 +40,9 @@ def check_and_close_position(ib: IB, order_id: int, symbol: str):
     action = 'SELL' if position.position > 0 else 'BUY'
     quantity = abs(position.position)
     contract = position.contract
-    #close_order = MarketOrder(action, quantity)
+    close_order = MarketOrder(action, quantity)
 
-    #trade = ib.placeOrder(contract, close_order)
+    trade = ib.placeOrder(contract, close_order)
     print(f"Позиция по {symbol} закрывается вручную: {action} {quantity}")
     ib.sleep(1)  # Подождем подтверждения
 

@@ -1,21 +1,26 @@
 """
 Модуль для работы с Interactive Brokers Gateway
 """
+
 import logging
 import os
 import sys
 import time
 
 import django
-from ib_insync import IB
+from ib_insync import IB, util
 from trading_bot.bot_signal_manager import BotSignalManager
 from django.conf import settings
 
 # Настраиваем Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'crm_project.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "crm_project.settings")
 django.setup()
 
-logger = logging.getLogger('bot')
+# Настраиваем логирование
+logger = logging.getLogger("bot")
+
+# Отключаем логи ib_insync ниже уровня WARNING
+util.logToConsole(level=logging.WARNING)
 
 
 class TradingBot:
@@ -24,12 +29,12 @@ class TradingBot:
     """
 
     def __init__(
-            self,
-            host: str = None,
-            port: int = None,
-            client_id: int = None,
-            max_retries: int = 3,
-            retry_delay: int = 5
+        self,
+        host: str = None,
+        port: int = None,
+        client_id: int = None,
+        max_retries: int = 3,
+        retry_delay: int = 5,
     ):
         """
         Инициализация подключения к IB Gateway
@@ -62,7 +67,9 @@ class TradingBot:
 
         for attempt in range(self.max_retries):
             try:
-                logger.info(f"Попытка подключения к IB Gateway ({attempt + 1}/{self.max_retries})")
+                logger.info(
+                    f"Попытка подключения к IB Gateway ({attempt + 1}/{self.max_retries})"
+                )
                 self.ib.connect(self.host, self.port, clientId=self.client_id)
                 self.connected = True
                 logger.info("Успешное подключение к IB Gateway")
@@ -72,7 +79,9 @@ class TradingBot:
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                 else:
-                    logger.error("Не удалось подключиться к IB Gateway после всех попыток")
+                    logger.error(
+                        "Не удалось подключиться к IB Gateway после всех попыток"
+                    )
                     return False
 
     def disconnect(self) -> None:
@@ -104,12 +113,11 @@ class TradingBot:
             self.signal_manager.manage_signals()
             self.disconnect()
 
-
         except Exception as e:
             logger.error(f"Критическая ошибка в боте: {str(e)}")
         finally:
             self.disconnect()
 
+
 # Создаем глобальный экземпляр бота
 bot = TradingBot()
-

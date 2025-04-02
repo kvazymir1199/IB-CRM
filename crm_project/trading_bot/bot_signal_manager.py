@@ -8,9 +8,13 @@ from typing import TYPE_CHECKING
 from datetime import datetime, timedelta
 import dataclasses
 import pytz
+import time
 
 from django.utils import timezone
-from ib_insync import LimitOrder, StopOrder, ContFuture, IB
+from ib_insync import LimitOrder, StopOrder, ContFuture, IB, util
+from ib_insync.objects import ExecutionFilter
+from ib_insync.order import MarketOrder
+
 from trading_bot.models import BotSeasonalSignal
 
 if TYPE_CHECKING:
@@ -18,6 +22,16 @@ if TYPE_CHECKING:
 
 # Создаем логгер для модуля
 logger = logging.getLogger('trading_bot.core.bot_signal_manager')
+
+# Отключаем логи ib_insync ниже уровня WARNING
+util.logToConsole(level=logging.WARNING)
+
+# Константы для таймаутов
+HISTORICAL_DATA_TIMEOUT = 30  # Увеличенный таймаут для исторических данных
+ORDER_TIMEOUT = 20  # Таймаут для операций с ордерами
+CONTRACT_DETAILS_TIMEOUT = 15  # Таймаут для получения деталей контракта
+MAX_RETRIES = 3  # Максимальное количество попыток
+RETRY_DELAY = 5  # Задержка между попытками в секундах
 
 
 @dataclasses.dataclass
@@ -76,7 +90,7 @@ class BotSignalManager:
     def get_current_time(self) -> datetime:
         """
         Получение текущего времени от IB Gateway
-        """ 
+        """
 
         return self.ib_connector.reqCurrentTime()
 
@@ -117,6 +131,7 @@ class BotSignalManager:
             entry_time = timezone.localtime(_signal.entry_date)
             exit_time = timezone.localtime(_signal.exit_date)
             logger.info(f"Время сейчас: {self.current_time}")
+            contract = self._get_contract(_signal)
             if not _signal.order_id:
                 self.logger.info(f"Сигнал {_signal.pk} не имеет открытого ордера")
 
@@ -126,7 +141,7 @@ class BotSignalManager:
 
                 self.logger.info(f"Время входа наступило для сигнала {_signal.pk}")
                 self.logger.info("Получение контракта...")
-                contract = self._get_contract(_signal)
+
 
                 if not contract:
                     self.logger.warning(f"Не удалось получить контракт для сигнала {_signal.pk}")
@@ -145,7 +160,7 @@ class BotSignalManager:
 
             if self.current_time >= exit_time:
                 self.logger.info(f"Время выхода наступило для сигнала {_signal.pk}")
-                # TODO: Добавить логику закрытия позиции
+                self.check_and_close_position(_signal.order_id, contract)
 
         except Exception as e:
             self.logger.error(f"Ошибка при обработке сигнала: {str(e)}", exc_info=True)
@@ -170,17 +185,24 @@ class BotSignalManager:
             currency="USD",
         )
 
-        # Получаем детали контракта
-        try:
-            details = self.ib_connector.reqContractDetails(contract)
-            if details:
-                return details[0]
-            else:
-                self.logger.warning("Не найдены детали контракта")
-                return None
-        except Exception as e:
-            self.logger.error(f"Ошибка при получении деталей контракта: {str(e)}")
-            return None
+        # Получаем детали контракта с повторными попытками
+        for attempt in range(MAX_RETRIES):
+            try:
+                self.logger.info(f"Попытка получения деталей контракта ({attempt + 1}/{MAX_RETRIES})")
+                details = self.ib_connector.reqContractDetails(contract)
+                if details:
+                    return details[0]
+                else:
+                    self.logger.warning("Не найдены детали контракта")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_DELAY)
+                    continue
+            except Exception as e:
+                self.logger.error(f"Ошибка при получении деталей контракта: {str(e)}")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_DELAY)
+                continue
+        return None
 
     def _is_trading_time(self, contract_details) -> bool:
         """
@@ -220,15 +242,31 @@ class BotSignalManager:
             self.logger.info(f"[1] Начало открытия ордера для сигнала {signal.pk}, контракт {contract.symbol}")
             self.logger.info("[2] Запрос исторических данных...")
 
-            bars = self.ib_connector.reqHistoricalData(
-                contract,
-                endDateTime='',
-                durationStr='1 D',
-                barSizeSetting='1 min',
-                whatToShow='TRADES',
-                useRTH=True,
-                timeout=10
-            )
+            # Получаем исторические данные с повторными попытками
+            bars = None
+            for attempt in range(MAX_RETRIES):
+                try:
+                    self.logger.info(f"Попытка получения исторических данных ({attempt + 1}/{MAX_RETRIES})")
+                    bars = self.ib_connector.reqHistoricalData(
+                        contract,
+                        endDateTime='',
+                        durationStr='1 D',
+                        barSizeSetting='1 min',
+                        whatToShow='TRADES',
+                        useRTH=True,
+                        timeout=HISTORICAL_DATA_TIMEOUT
+                    )
+                    if bars:
+                        break
+                except Exception as e:
+                    self.logger.error(f"Ошибка при получении исторических данных: {str(e)}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_DELAY)
+                    continue
+
+            if not bars:
+                raise Exception("Не удалось получить исторические данные после всех попыток")
+
             self.logger.info(f"[3] Получены исторические данные: {len(bars)} баров")
 
             actual_price = float(bars[-1].close)
@@ -278,12 +316,26 @@ class BotSignalManager:
             limit_order.totalQuantity = lots
             self.logger.info("[14] Обновлено количество в лимитном ордере")
 
-            # Размещаем лимитный ордер
-            self.logger.info("[15] Размещение лимитного ордера...")
-            trade = self.ib_connector.placeOrder(contract, limit_order)
+            # Размещаем лимитный ордер с повторными попытками
+            trade = None
+            for attempt in range(MAX_RETRIES):
+                try:
+                    self.logger.info(f"[15] Попытка размещения лимитного ордера ({attempt + 1}/{MAX_RETRIES})...")
+                    trade = self.ib_connector.placeOrder(contract, limit_order)
+                    if trade:
+                        break
+                except Exception as e:
+                    self.logger.error(f"Ошибка при размещении лимитного ордера: {str(e)}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_DELAY)
+                    continue
+
+            if not trade:
+                raise Exception("Не удалось разместить лимитный ордер после всех попыток")
+
             self.logger.info(f"[16] Лимитный ордер размещен, ID: {trade.order.orderId}")
 
-            # Создаем и размещаем стоп-ордер
+            # Создаем и размещаем стоп-ордер с повторными попытками
             self.logger.info("[17] Создание стоп-ордера...")
             stop_order = StopOrder(
                 action=exit_action,
@@ -293,8 +345,22 @@ class BotSignalManager:
             stop_order.parentId = trade.order.orderId
             self.logger.info(f"[18] Связываем стоп-ордер с родительским ордером {trade.order.orderId}")
 
-            self.logger.info("[19] Размещение стоп-ордера...")
-            stop_trade = self.ib_connector.placeOrder(contract, stop_order)
+            stop_trade = None
+            for attempt in range(MAX_RETRIES):
+                try:
+                    self.logger.info(f"[19] Попытка размещения стоп-ордера ({attempt + 1}/{MAX_RETRIES})...")
+                    stop_trade = self.ib_connector.placeOrder(contract, stop_order)
+                    if stop_trade:
+                        break
+                except Exception as e:
+                    self.logger.error(f"Ошибка при размещении стоп-ордера: {str(e)}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_DELAY)
+                    continue
+
+            if not stop_trade:
+                raise Exception("Не удалось разместить стоп-ордер после всех попыток")
+
             self.logger.info(f"[20] Стоп-ордер размещен, ID: {stop_trade.order.orderId}")
             self.ib_connector.sleep(1)
 
@@ -306,6 +372,7 @@ class BotSignalManager:
             if stop_trade.log:
                 for log in stop_trade.log:
                     self.logger.info(f"[DEBUG] Стоп-ордер лог: {log.message}")
+
             # Сохраняем ID ордера в сигнале
             signal.order_id = parent_id
             signal.save()
@@ -403,3 +470,100 @@ class BotSignalManager:
             self.logger.error(f"Ошибка при расчете размера позиции: {str(e)}")
             self.logger.info("Возвращаем минимальный размер позиции: 1")
             return 1
+
+    def check_and_close_position(self, order_id: int, contract: ContFuture) -> bool:
+        """
+        Проверяет и закрывает позицию если необходимо
+        
+        Args:
+            order_id: ID ордера
+            contract: Объект контракта
+            
+        Returns:
+            bool: True если позиция успешно закрыта, False в противном случае
+        """
+        try:
+            self.logger.info(
+                f"Начало проверки позиции для ордера {order_id} "
+                f"({contract.contract.symbol})"
+            )
+            
+            # 1. Проверка исполнения ордера
+            filter = ExecutionFilter()
+            executions = self.ib_connector.reqExecutions(filter)
+            order_executed = any(
+                exe.execution.orderId == order_id for exe in executions
+            )
+            
+            if not order_executed:
+                self.logger.info(f"Ордер {order_id} не был исполнен")
+                return False
+                
+            # 2. Проверка наличия позиции
+            positions = self.ib_connector.positions()
+            position = next(
+                (p for p in positions if p.contract.symbol == contract.contract.symbol),
+                None
+            )
+            
+            if not position or position.position == 0:
+                self.logger.info(
+                    f"Позиция по {contract.contract.symbol} отсутствует или уже закрыта"
+                )
+                return False
+                
+            # 3. Проверка исполнения стоп-ордера
+            stop_order_executed = False
+            for exe in executions:
+                execn = exe.execution
+                if execn.orderId != order_id and execn.parentId == order_id:
+                    if execn.side in ('SLD', 'BOT'):
+                        stop_order_executed = True
+                        break
+                        
+            if stop_order_executed:
+                self.logger.info(
+                    f"Позиция по {contract.contract.symbol} уже закрыта стоп-ордером"
+                )
+                return True
+                
+            # 4. Закрытие позиции
+            self.logger.info(
+                f"Подготовка к закрытию позиции по {contract.contract.symbol}"
+            )
+            action = 'SELL' if position.position > 0 else 'BUY'
+            quantity = abs(position.position)
+            
+            close_order = MarketOrder(action, quantity)
+            trade = self.ib_connector.placeOrder(contract.contract, close_order)
+            
+            if not trade:
+                self.logger.error(
+                    f"Не удалось разместить ордер на закрытие {contract.contract.symbol}"
+                )
+                return False
+                
+            self.logger.info(
+                f"Ордер на закрытие размещен: {action} {quantity} {contract.contract.symbol}"
+            )
+            
+            # 5. Проверка статуса закрытия
+            self.ib_connector.sleep(1)
+            if trade.orderStatus.status == 'Filled':
+                self.logger.info(
+                    f"Позиция по {contract.contract.symbol} успешно закрыта"
+                )
+                return True
+            else:
+                self.logger.warning(
+                    f"Не удалось закрыть позицию по {contract.contract.symbol}, "
+                    f"статус: {trade.orderStatus.status}"
+                )
+                return False
+                
+        except Exception as e:
+            self.logger.error(
+                f"Ошибка при закрытии позиции {contract.contract.symbol}: {str(e)}",
+                exc_info=True
+            )
+            return False
