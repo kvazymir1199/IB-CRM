@@ -13,6 +13,7 @@ COPY . .
 
 # Делаем entrypoint.sh исполняемым
 RUN chmod +x entrypoint.sh
+RUN if [ -f entrypoint_win.bat ]; then chmod +x entrypoint_win.bat; fi
 
 # Запускаем команду по умолчанию
 CMD ["bash", "./entrypoint.sh"] 

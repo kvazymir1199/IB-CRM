@@ -3,7 +3,10 @@ services:
     build:
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.web
+    # Используйте эту команду для Linux/macOS
     command: bash ./entrypoint.sh
+    # Используйте эту команду для Windows (раскомментируйте строку ниже и закомментируйте строку выше)
+    # command: cmd /c entrypoint_win.bat
     volumes:
       - ./crm_project:/app
     ports:
