@@ -13,6 +13,8 @@ services:
       - DJANGO_ENV=development
     depends_on:
       - redis
+    networks:
+      - app-network
 
 #  celery:
 #    build:
@@ -82,6 +84,8 @@ services:
     depends_on:
       - web
       - redis
+    networks:
+      - app-network
 
   trading-bot:
     build:
@@ -106,10 +110,12 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    networks:
+      - app-network
 
 volumes:
   redis-data:
 
 networks:
-  default:
-    name: app-network 
+  app-network:
+    driver: bridge 
