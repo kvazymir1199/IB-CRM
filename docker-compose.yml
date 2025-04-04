@@ -3,10 +3,22 @@ services:
     build:
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.web
-    # Используйте эту команду для Linux/macOS
-    command: bash ./entrypoint.sh
-    # Используйте эту команду для Windows (раскомментируйте строку ниже и закомментируйте строку выше)
-    # command: cmd /c entrypoint_win.bat
+    command: >
+      bash -c "
+        mkdir -p /app/static /app/logs &&
+        echo 'Waiting for database to start...' &&
+        sleep 5 &&
+        find . -path \"*/migrations/*.py\" -not -name \"__init__.py\" -delete &&
+        find . -path \"*/migrations/*.pyc\" -delete &&
+        echo 'Creating migrations for signals app...' &&
+        python manage.py makemigrations signals &&
+        echo 'Creating migrations for trading_bot app...' &&
+        python manage.py makemigrations trading_bot &&
+        echo 'Applying migrations...' &&
+        python manage.py migrate &&
+        echo 'Starting Django server...' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
     volumes:
       - ./crm_project:/app
     ports:
@@ -89,7 +101,6 @@ services:
       - redis
     networks:
       - app-network
-
 
   redis:
     image: redis:7-alpine

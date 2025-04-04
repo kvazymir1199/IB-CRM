@@ -11,9 +11,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код проекта
 COPY . .
 
-# Делаем entrypoint.sh исполняемым
-RUN chmod +x entrypoint.sh
-RUN if [ -f entrypoint_win.bat ]; then chmod +x entrypoint_win.bat; fi
-
-# Запускаем команду по умолчанию
-CMD ["bash", "./entrypoint.sh"] 
+# Запускаем команду по умолчанию (будет переопределена в docker-compose.yml)
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"] 
