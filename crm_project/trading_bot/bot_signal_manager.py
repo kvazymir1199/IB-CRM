@@ -127,10 +127,9 @@ class BotSignalManager:
             _signal: Объект BotSeasonalSignal
         """
         try:
-            self.logger.info(f"Обработка сигнала {_signal.pk}")
+            self.logger.info("=" * 20 + f" Обработка сигнала {_signal.id} " + "=" * 20)
             entry_time = timezone.localtime(_signal.entry_date)
             exit_time = timezone.localtime(_signal.exit_date)
-            logger.info(f"Время сейчас: {self.current_time}")
             contract = self._get_contract(_signal)
             if not _signal.order_id:
                 self.logger.info(f"Сигнал {_signal.pk} не имеет открытого ордера")
@@ -161,7 +160,7 @@ class BotSignalManager:
             if self.current_time >= exit_time:
                 self.logger.info(f"Время выхода наступило для сигнала {_signal.pk}")
                 self.check_and_close_position(_signal.order_id, contract)
-
+            self.logger.info("=" * 20 + f" Завершение обработки сигнала {_signal.id} " + "=" * 20)
         except Exception as e:
             self.logger.error(f"Ошибка при обработке сигнала: {str(e)}", exc_info=True)
 
@@ -483,72 +482,86 @@ class BotSignalManager:
             bool: True если позиция успешно закрыта, False в противном случае
         """
         try:
+            self.logger.info("=" * 40)
             self.logger.info(
-                f"Начало проверки позиции для ордера {order_id} "
-                f"({contract.contract.symbol})"
+                f"=== Начало проверки позиции для ордера {order_id} "
+                f"({contract.contract.symbol}) ==="
             )
             
-            # 1. Проверка исполнения ордера
-            filter = ExecutionFilter()
-            executions = self.ib_connector.reqExecutions(filter)
-            order_executed = any(
-                exe.execution.orderId == order_id for exe in executions
-            )
-            
-            if not order_executed:
-                self.logger.info(f"Ордер {order_id} не был исполнен")
-                return False
-                
-            # 2. Проверка наличия позиции
+            # 1. Сразу проверяем наличие позиции (пропускаем проверку исполнений)
+            self.logger.info("Проверка наличия открытой позиции...")
             positions = self.ib_connector.positions()
+            
+            # Логируем все позиции для отладки
+            self.logger.info(f"Получено {len(positions)} позиций:")
+            for i, pos in enumerate(positions):
+                self.logger.info(
+                    f"  #{i+1}: symbol={pos.contract.symbol}, "
+                    f"position={pos.position}, "
+                    f"avgCost={pos.avgCost}"
+                )
+            
             position = next(
                 (p for p in positions if p.contract.symbol == contract.contract.symbol),
                 None
             )
             
-            if not position or position.position == 0:
-                self.logger.info(
-                    f"Позиция по {contract.contract.symbol} отсутствует или уже закрыта"
+            if not position:
+                self.logger.warning(
+                    f"Позиция по {contract.contract.symbol} не найдена в списке позиций. "
+                    f"Проверьте соответствие символов."
                 )
                 return False
                 
-            # 3. Проверка исполнения стоп-ордера
-            stop_order_executed = False
-            for exe in executions:
-                execn = exe.execution
-                if execn.orderId != order_id and execn.parentId == order_id:
-                    if execn.side in ('SLD', 'BOT'):
-                        stop_order_executed = True
-                        break
-                        
-            if stop_order_executed:
-                self.logger.info(
-                    f"Позиция по {contract.contract.symbol} уже закрыта стоп-ордером"
-                )
-                return True
+            if position.position == 0:
+                self.logger.info(f"Позиция по {contract.contract.symbol} имеет нулевой объем.")
+                return False
                 
-            # 4. Закрытие позиции
+            self.logger.info(
+                f"Найдена позиция по {contract.contract.symbol}: "
+                f"объем={position.position}, средняя цена={position.avgCost}"
+            )
+            
+            # 2. Закрытие позиции (пропускаем проверку стоп-ордера)
             self.logger.info(
                 f"Подготовка к закрытию позиции по {contract.contract.symbol}"
             )
             action = 'SELL' if position.position > 0 else 'BUY'
             quantity = abs(position.position)
             
+            self.logger.info(
+                f"Создание ордера: {action} {quantity} {contract.contract.symbol}"
+            )
+            
             close_order = MarketOrder(action, quantity)
             trade = self.ib_connector.placeOrder(contract.contract, close_order)
             
             if not trade:
                 self.logger.error(
-                    f"Не удалось разместить ордер на закрытие {contract.contract.symbol}"
+                    f"Не удалось разместить ордер на закрытие {contract.contract.symbol}. "
+                    f"API вернул: {trade}"
                 )
                 return False
                 
             self.logger.info(
-                f"Ордер на закрытие размещен: {action} {quantity} {contract.contract.symbol}"
+                f"Ордер на закрытие размещен: orderId={trade.order.orderId}, "
+                f"status={trade.orderStatus.status}, "
+                f"{action} {quantity} {contract.contract.symbol}"
             )
             
-            # 5. Проверка статуса закрытия
-            self.ib_connector.sleep(1)
+            # 3. Проверка статуса закрытия
+            wait_time = 3  # Увеличиваем время ожидания для заполнения ордера
+            self.logger.info(f"Ожидание исполнения ордера закрытия ({wait_time} сек)...")
+            self.ib_connector.sleep(wait_time)
+            
+            # Повторно получаем статус ордера
+            trade = self.ib_connector.trades().get(trade.order.orderId, trade)
+            
+            self.logger.info(
+                f"Текущий статус ордера: {trade.orderStatus.status}, "
+                f"filled={trade.orderStatus.filled}/{quantity}"
+            )
+            
             if trade.orderStatus.status == 'Filled':
                 self.logger.info(
                     f"Позиция по {contract.contract.symbol} успешно закрыта"
@@ -557,7 +570,9 @@ class BotSignalManager:
             else:
                 self.logger.warning(
                     f"Не удалось закрыть позицию по {contract.contract.symbol}, "
-                    f"статус: {trade.orderStatus.status}"
+                    f"статус: {trade.orderStatus.status}, "
+                    f"filled: {trade.orderStatus.filled}/{quantity}, "
+                    f"remaining: {trade.orderStatus.remaining}"
                 )
                 return False
                 
@@ -566,4 +581,12 @@ class BotSignalManager:
                 f"Ошибка при закрытии позиции {contract.contract.symbol}: {str(e)}",
                 exc_info=True
             )
+            # Логируем дополнительную информацию об ошибке
+            import traceback
+            self.logger.error(f"Детали ошибки: {traceback.format_exc()}")
             return False
+        finally:
+            self.logger.info(
+                f"=== Завершение проверки позиции для ордера {order_id} ==="
+            )
+            self.logger.info("=" * 40)
