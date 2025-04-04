@@ -1,0 +1,9 @@
+# Dockerfile.celery-bot
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+ENV PYTHONPATH=/app
+ENV DJANGO_SETTINGS_MODULE=crm_project.settings
+CMD ["celery", "-A", "crm_project", "worker", "-l", "INFO", "-Q", "bot_queue"]

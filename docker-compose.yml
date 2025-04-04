@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   web:
     build:
       context: ./crm_project
-      dockerfile: Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
+      dockerfile: dockerfiles/Dockerfile.web
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./crm_project:/app
     ports:
@@ -16,25 +14,66 @@ services:
     depends_on:
       - redis
 
-  celery:
-    build:
+#  celery:
+#    build:
+#      context: ./crm_project
+#      dockerfile: dockerfiles/Dockerfile.celery
+#    volumes:
+#      - ./crm_project:/app
+#    environment:
+#      - DJANGO_SETTINGS_MODULE=crm_project.settings
+#      - CELERY_BROKER_URL=redis://redis:6379/0
+#      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+#    depends_on:
+#      - redis
+#      - web
+#    networks:
+#      - app-network
+
+  celery-bot:
+    build: 
       context: ./crm_project
-      dockerfile: Dockerfile
-    command: celery -A crm_project worker -l INFO
+      dockerfile: dockerfiles/Dockerfile.celery-bot
     volumes:
       - ./crm_project:/app
-    environment:
-      - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - DJANGO_ENV=development
     depends_on:
       - web
       - redis
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - IB_HOST=host.docker.internal
+      - IB_PORT=4002
+      - IB_CLIENT_ID=1234
+      - PYTHONUNBUFFERED=1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  celery-signals:
+    build: 
+      context: ./crm_project
+      dockerfile: dockerfiles/Dockerfile.celery-signals
+    volumes:
+      - ./crm_project:/app
+    depends_on:
+      - web
+      - redis
+    environment:
+      - DJANGO_SETTINGS_MODULE=crm_project.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+    networks:
+      - app-network
 
   celery-beat:
     build:
       context: ./crm_project
-      dockerfile: Dockerfile
-    command: celery -A crm_project beat -l INFO
+      dockerfile: dockerfiles/Dockerfile.celery-beat
     volumes:
       - ./crm_project:/app
     environment:

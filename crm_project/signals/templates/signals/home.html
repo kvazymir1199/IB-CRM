@@ -5,10 +5,16 @@
 {% block content %}
 <div class="page-header">
     <h1>Торговые сигналы</h1>
-    <button class="btn btn-primary" id="addSignalBtn">
-        <span class="btn-icon">+</span>
-        Добавить сигнал
-    </button>
+    <div class="header-buttons">
+        <button class="btn btn-primary" id="addSignalBtn">
+            <span class="btn-icon">+</span>
+            Добавить сигнал
+        </button>
+        <button class="btn" id="toggleBotBtn">
+            <span class="btn-icon">🤖</span>
+            <span class="bot-status">Запустить бота</span>
+        </button>
+    </div>
 </div>
 
 <div class="filters">
@@ -79,4 +85,55 @@
     </button>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBotBtn = document.getElementById('toggleBotBtn');
+    const botStatus = toggleBotBtn.querySelector('.bot-status');
+    
+    // Получаем начальное состояние бота
+    fetch('/trading_bot/api/bot/state/')
+        .then(response => response.json())
+        .then(data => {
+            updateBotButton(data.is_running);
+        });
+    
+    // Обработчик клика по кнопке
+    toggleBotBtn.addEventListener('click', function() {
+        fetch('/trading_bot/api/bot/toggle/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateBotButton(data.is_running);
+        });
+    });
+    
+    function updateBotButton(isRunning) {
+        toggleBotBtn.className = `btn ${isRunning ? 'btn-success' : 'btn-secondary'}`;
+        botStatus.textContent = isRunning ? 'Остановить бота' : 'Запустить бота';
+    }
+    
+    // Функция для получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
 {% endblock %} 

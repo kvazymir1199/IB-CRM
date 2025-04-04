@@ -1,0 +1,31 @@
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+#toggleBotBtn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s ease;
+}
+
+#toggleBotBtn.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+#toggleBotBtn.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+#toggleBotBtn:hover {
+    opacity: 0.9;
+}
+
+.btn-icon {
+    font-size: 1.2em;
+} 

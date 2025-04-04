@@ -2,6 +2,12 @@ from django.db import models
 from signals.models import SeasonalSignal
 
 
+class TradeStatus(models.TextChoices):
+    AWAITING = "awaiting", "Awaiting"
+    OPEN = "open", "Trade Open"
+    CLOSE = "close", "Trade Close"
+
+
 class BotSeasonalSignal(models.Model):
     """
     Модель для хранения информации о торговых сигналах бота.
@@ -29,6 +35,17 @@ class BotSeasonalSignal(models.Model):
         auto_now=True,
         verbose_name='Обновлен'
     )
+    status = models.CharField(
+        max_length=10,  # Максимальная длина строки
+        choices=TradeStatus.choices,
+        default=TradeStatus.AWAITING,
+    )
+    order_id = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='ID ордера',
+        help_text='ID ордера в Interactive Brokers'
+    )
 
     class Meta:
         verbose_name = 'Торговый сигнал'
@@ -37,3 +54,22 @@ class BotSeasonalSignal(models.Model):
 
     def __str__(self):
         return f'Торговый сигнал {self.signal} ({self.entry_date.date()})'
+
+
+class BotState(models.Model):
+    """Модель для хранения состояния бота"""
+    is_running = models.BooleanField(default=False)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Состояние бота'
+        verbose_name_plural = 'Состояние бота'
+    
+    def __str__(self):
+        return f"Бот {'запущен' if self.is_running else 'остановлен'}"
+    
+    @classmethod
+    def get_state(cls):
+        """Получить текущее состояние бота"""
+        state, created = cls.objects.get_or_create(id=1)
+        return state
