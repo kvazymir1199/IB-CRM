@@ -104,10 +104,6 @@ IB_HOST = os.getenv('IB_HOST', 'host.docker.internal')
 IB_PORT = int(os.getenv('IB_PORT', '4002'))
 IB_CLIENT_ID = int(os.getenv('IB_CLIENT_ID', '1234'))
 
-# Создаем директорию для логов
-LOGS_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOGS_DIR, exist_ok=True)
-
 # Настройки логирования
 LOGGING = {
     'version': 1,
@@ -118,34 +114,29 @@ LOGGING = {
             'style': '{',
         },
         'simple': {
-            'format': '{levelname} {message}',
+            'format': '{levelname} {asctime} {message}',
             'style': '{',
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'trading_bot.log'),
             'formatter': 'verbose',
         },
     },
     'loggers': {
         'trading_bot': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'trading_bot.core.bot_signal_manager': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'bot': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
