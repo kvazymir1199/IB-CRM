@@ -64,7 +64,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = os.getenv("TZ", "Asia/Bangkok")
+# Часовой пояс: UTC+1
+TIME_ZONE = os.getenv("TZ", "Europe/Berlin")
 
 USE_I18N = True
 
