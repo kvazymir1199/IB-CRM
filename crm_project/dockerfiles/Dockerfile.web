@@ -11,9 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем код проекта
 COPY . .
 
-# Создаем пользователя без прав root
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
+# Делаем entrypoint.sh исполняемым
+RUN chmod +x entrypoint.sh
 
 # Запускаем команду по умолчанию
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"] 
+CMD ["bash", "./entrypoint.sh"] 

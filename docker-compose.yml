@@ -3,7 +3,7 @@ services:
     build:
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.web
-    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: bash ./entrypoint.sh
     volumes:
       - ./crm_project:/app
     ports:
@@ -87,22 +87,6 @@ services:
     networks:
       - app-network
 
-  trading-bot:
-    build:
-      context: ./crm_project
-      dockerfile: Dockerfile.trading
-    volumes:
-      - ./crm_project:/app
-    environment:
-      - DJANGO_SETTINGS_MODULE=crm_project.settings
-      - DJANGO_ENV=development
-      - IB_HOST=host.docker.internal
-      - IB_PORT=7496
-      - IB_CLIENT_ID=1
-    network_mode: "host"
-    depends_on:
-      - web
-      - redis
 
   redis:
     image: redis:7-alpine
