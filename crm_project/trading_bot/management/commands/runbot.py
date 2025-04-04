@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
-from trading_bot.core.bot import TradingBot
-import time
+from trading_bot.bot import TradingBot
+
 
 class Command(BaseCommand):
     help = 'Запускает торгового бота'
@@ -9,14 +9,7 @@ class Command(BaseCommand):
         self.stdout.write('Запуск торгового бота...')
         
         bot = TradingBot()
-        
-        try:
-            while True:
-                results = bot.check_signals()
-                self.stdout.write(f'Результаты проверки сигналов: {results}')
-                time.sleep(60)  # Проверка каждую минуту
+
+        bot.run()
+
                 
-        except KeyboardInterrupt:
-            self.stdout.write('Остановка бота...')
-        finally:
-            bot.disconnect() 

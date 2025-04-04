@@ -2,7 +2,7 @@
 Команда для проверки и создания сигналов
 """
 from django.core.management.base import BaseCommand
-from trading_bot.core.signal_manager import signal_manager
+from trading_bot.signal_manager import signal_manager
 
 
 class Command(BaseCommand):
