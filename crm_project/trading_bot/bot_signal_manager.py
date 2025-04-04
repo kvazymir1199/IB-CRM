@@ -488,7 +488,45 @@ class BotSignalManager:
                 f"({contract.contract.symbol}) ==="
             )
             
-            # 1. Сразу проверяем наличие позиции (пропускаем проверку исполнений)
+            # 1. Проверка исполнения ордера через trades
+            self.logger.info(f"Проверка исполнения ордера {order_id}...")
+            trades = self.ib_connector.trades()
+            
+            # Логируем найденные трейды для отладки
+            self.logger.info(f"Получено {len(trades)} трейдов:")
+            for i, (orderId, trade) in enumerate(list(trades.items())[:10]):  # Выводим первые 10
+                self.logger.info(
+                    f"  #{i+1}: orderId={orderId}, "
+                    f"contract={trade.contract.symbol}, "
+                    f"status={trade.orderStatus.status}, "
+                    f"filled={trade.orderStatus.filled}"
+                )
+            
+            # Найдем наш ордер
+            parent_trade = trades.get(order_id)
+            
+            # Проверяем статус ордера
+            if not parent_trade:
+                self.logger.warning(
+                    f"Ордер {order_id} не найден в списке трейдов. "
+                    f"Возможно, он еще не активирован или был отменен."
+                )
+                return False
+                
+            self.logger.info(
+                f"Ордер {order_id} найден: статус={parent_trade.orderStatus.status}, "
+                f"filled={parent_trade.orderStatus.filled}"
+            )
+            
+            # Проверяем был ли ордер исполнен
+            order_executed = parent_trade.orderStatus.status in ['Filled', 'Submitted', 'PreSubmitted']
+            if not order_executed:
+                self.logger.info(
+                    f"Ордер {order_id} не был исполнен, статус: {parent_trade.orderStatus.status}"
+                )
+                return False
+            
+            # 2. Проверка наличия позиции
             self.logger.info("Проверка наличия открытой позиции...")
             positions = self.ib_connector.positions()
             
@@ -522,7 +560,32 @@ class BotSignalManager:
                 f"объем={position.position}, средняя цена={position.avgCost}"
             )
             
-            # 2. Закрытие позиции (пропускаем проверку стоп-ордера)
+            # 3. Проверка наличия активных стоп-ордеров
+            self.logger.info("Проверка наличия активных стоп-ордеров...")
+            open_orders = self.ib_connector.openOrders()
+            
+            # Ищем стоп-ордера, связанные с нашим родительским ордером
+            stop_orders = [
+                o for o in open_orders 
+                if getattr(o, 'parentId', None) == order_id 
+                and o.orderType == 'STP'
+            ]
+            
+            # Логируем найденные стоп-ордера
+            if stop_orders:
+                self.logger.info(f"Найдены активные стоп-ордера: {len(stop_orders)}")
+                for i, order in enumerate(stop_orders):
+                    self.logger.info(
+                        f"  #{i+1}: orderId={order.orderId}, "
+                        f"status={trades.get(order.orderId, {}).orderStatus.status if order.orderId in trades else 'Unknown'}"
+                    )
+                # Ордера есть, они сами закроют позицию
+                self.logger.info("Стоп-ордера активны, они закроют позицию автоматически")
+                return False
+            else:
+                self.logger.info("Активные стоп-ордера не найдены")
+            
+            # 4. Закрытие позиции
             self.logger.info(
                 f"Подготовка к закрытию позиции по {contract.contract.symbol}"
             )
@@ -549,7 +612,7 @@ class BotSignalManager:
                 f"{action} {quantity} {contract.contract.symbol}"
             )
             
-            # 3. Проверка статуса закрытия
+            # 5. Проверка статуса закрытия
             wait_time = 3  # Увеличиваем время ожидания для заполнения ордера
             self.logger.info(f"Ожидание исполнения ордера закрытия ({wait_time} сек)...")
             self.ib_connector.sleep(wait_time)
