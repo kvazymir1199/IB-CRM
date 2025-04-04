@@ -3,7 +3,7 @@ services:
     build: 
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.web
-    command: python manage.py runserver 0.0.0.0:8000
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./crm_project:/app
     ports:
