@@ -6,6 +6,7 @@ services:
     command: >
       bash -c "
         mkdir -p /app/static /app/logs &&
+        chmod -R 777 /app/logs &&
         echo 'Waiting for database to start...' &&
         sleep 5 &&
         find . -path \"*/migrations/*.py\" -not -name \"__init__.py\" -delete &&
@@ -51,6 +52,12 @@ services:
     build: 
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.celery-bot
+    command: >
+      bash -c "
+        mkdir -p /app/logs &&
+        chmod -R 777 /app/logs &&
+        celery -A crm_project worker -l INFO -Q bot_queue
+      "
     volumes:
       - ./crm_project:/app
     depends_on:
@@ -74,6 +81,12 @@ services:
     build: 
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.celery-signals
+    command: >
+      bash -c "
+        mkdir -p /app/logs &&
+        chmod -R 777 /app/logs &&
+        celery -A crm_project worker -l INFO -Q signals_queue
+      "
     volumes:
       - ./crm_project:/app
     depends_on:
@@ -91,6 +104,12 @@ services:
     build:
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.celery-beat
+    command: >
+      bash -c "
+        mkdir -p /app/logs &&
+        chmod -R 777 /app/logs &&
+        celery -A crm_project beat -l INFO
+      "
     volumes:
       - ./crm_project:/app
     environment:
