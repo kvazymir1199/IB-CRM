@@ -1,6 +1,9 @@
 # Используем официальный образ Python
 FROM python:3.11-slim
 
+# Установка curl для проверки доступности web-сервиса
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
@@ -10,10 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код проекта
 COPY . .
-
-# Создаем пользователя без прав root
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
 
 # Запускаем Celery beat
 CMD ["celery", "-A", "crm_project", "beat", "-l", "INFO"] 

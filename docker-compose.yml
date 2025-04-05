@@ -32,18 +32,34 @@ services:
       - redis
     networks:
       - app-network
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   celery-bot:
     build: 
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.celery-bot
-    command: celery -A crm_project worker -l INFO -Q bot_queue
+    command: >
+      bash -c "
+        echo 'Waiting for web service to be ready...' &&
+        while ! curl -s http://web:8000/admin/ > /dev/null; do
+          sleep 5
+          echo 'Still waiting for web service...'
+        done &&
+        echo 'Web service is ready, starting celery worker...' &&
+        celery -A crm_project worker -l INFO -Q bot_queue
+      "
     volumes:
       - ./crm_project:/app
     depends_on:
-      - web
-      - redis
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -62,12 +78,23 @@ services:
     build: 
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.celery-signals
-    command: celery -A crm_project worker -l INFO -Q signals_queue
+    command: >
+      bash -c "
+        echo 'Waiting for web service to be ready...' &&
+        while ! curl -s http://web:8000/admin/ > /dev/null; do
+          sleep 5
+          echo 'Still waiting for web service...'
+        done &&
+        echo 'Web service is ready, starting celery worker...' &&
+        celery -A crm_project worker -l INFO -Q signals_queue
+      "
     volumes:
       - ./crm_project:/app
     depends_on:
-      - web
-      - redis
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -80,15 +107,26 @@ services:
     build:
       context: ./crm_project
       dockerfile: dockerfiles/Dockerfile.celery-beat
-    command: celery -A crm_project beat -l INFO
+    command: >
+      bash -c "
+        echo 'Waiting for web service to be ready...' &&
+        while ! curl -s http://web:8000/admin/ > /dev/null; do
+          sleep 5
+          echo 'Still waiting for web service...'
+        done &&
+        echo 'Web service is ready, starting celery beat...' &&
+        celery -A crm_project beat -l INFO
+      "
     volumes:
       - ./crm_project:/app
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
       - DJANGO_ENV=development
-    depends_on:
-      - web
-      - redis
     networks:
       - app-network
 
