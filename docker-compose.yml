@@ -19,12 +19,12 @@ services:
         echo 'Importing symbols...' &&
         python manage.py import_symbols &&
         echo 'Creating superuser if not exists...' &&
-        DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin} \
-        DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com} \
-        DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin} \
-        python manage.py createsuperuser --noinput || echo "Superuser already exists." &&
+        export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin} &&
+        export DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com} &&
+        export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin} &&
+        python manage.py createsuperuser --noinput 2>/dev/null || echo "Superuser already exists" &&
         echo 'Starting Django server...' &&
-        python manage.py runserver 0.0.0.0:8000
+        exec python manage.py runserver 0.0.0.0:8000
       "
     volumes:
       - ./crm_project:/app
@@ -40,6 +40,7 @@ services:
       - redis
     networks:
       - app-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/admin/"]
       interval: 10s
