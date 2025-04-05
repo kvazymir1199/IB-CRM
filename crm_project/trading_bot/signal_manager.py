@@ -9,6 +9,7 @@ from signals.models import SeasonalSignal
 from django.apps import apps
 from trading_bot.models import BotSeasonalSignal
 from typing import Dict, Any, List, Optional
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ class SignalManager:
     def __init__(self):
         # Получаем локальную временную зону из настроек Django
         self.local_tz = pytz.timezone(timezone.get_current_timezone_name())
+        
+        # Логируем информацию о часовом поясе при инициализации
+        logger.info(
+            f"Инициализация SignalManager с часовым поясом: "
+            f"{self.local_tz.zone} (сейчас: UTC{datetime.now(self.local_tz).strftime('%z')})"
+        )
 
     def check_signals(self):
         """
@@ -197,9 +204,10 @@ class SignalManager:
 
         logger.info(
             f"Сравнение дат для сигнала {signal} (Magic: {signal.magic_number}):\n"
-            f"Дата входа (Local): {entry_date}\n"
+            f"Дата входа (Local {self.local_tz.zone}): {entry_date}\n"
             f"Дата входа (UTC): {entry_date_utc}\n"
             f"Текущее время (UTC): {current_time}\n"
+            f"Разница (минуты): {(entry_date_utc - current_time).total_seconds() / 60:.2f}\n"
             f"Вход в будущем: {entry_date_utc > current_time}"
         )
 

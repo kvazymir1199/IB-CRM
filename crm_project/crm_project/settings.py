@@ -64,7 +64,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-# Часовой пояс: UTC+1
+# Часовой пояс: Europe/Berlin (UTC+1, но UTC+2 во время летнего периода)
 TIME_ZONE = os.getenv("TZ", "Europe/Berlin")
 
 USE_I18N = True
