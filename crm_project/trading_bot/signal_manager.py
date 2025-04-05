@@ -192,15 +192,19 @@ class SignalManager:
             )
         )
 
+        # Преобразуем локальное время entry_date в UTC для правильного сравнения
+        entry_date_utc = entry_date.astimezone(pytz.UTC)
+
         logger.info(
             f"Сравнение дат для сигнала {signal} (Magic: {signal.magic_number}):\n"
             f"Дата входа (Local): {entry_date}\n"
+            f"Дата входа (UTC): {entry_date_utc}\n"
             f"Текущее время (UTC): {current_time}\n"
-            f"Вход в будущем: {entry_date > current_time}"
+            f"Вход в будущем: {entry_date_utc > current_time}"
         )
 
-        # Если дата входа в будущем, создаем сигнал
-        if entry_date > current_time:
+        # Сравниваем даты в одинаковом часовом поясе (UTC)
+        if entry_date_utc > current_time:
             self._create_bot_signal(signal, current_year)
             return True
 
