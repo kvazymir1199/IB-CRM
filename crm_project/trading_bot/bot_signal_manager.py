@@ -225,6 +225,7 @@ class BotSignalManager:
             for day in trading_schedule:
 
                 if day.status == "OPEN":
+                    self.logger.info(f"торговые часы открыты: {day.start} - {day.end} сейчас {self.current_time}")
                     if self.current_time >= day.start and self.current_time <= day.end:
                         self.logger.info(f"торговые часы открыты: {day.start} - {day.end} сейчас {self.current_time}")
                         return True
@@ -534,21 +535,7 @@ class BotSignalManager:
                     f"totalQuantity={order.totalQuantity}"
                 )
             
-            # Ищем стоп-ордера для этого символа контракта
-            stop_orders = [
-                o for o in open_orders 
-                if o.orderType == 'STP' and o.contract.symbol == contract.contract.symbol
-            ]
-            
-            # Если найдены активные стоп-ордера для этого символа, не закрываем позицию
-            if stop_orders:
-                self.logger.info(
-                    f"Найдены активные стоп-ордера для {contract.contract.symbol}: {len(stop_orders)}. "
-                    f"Стоп-ордера закроют позицию автоматически."
-                )
-                return False
-            else:
-                self.logger.info(f"Активные стоп-ордера для {contract.contract.symbol} не найдены")
+
             
             # 3. Закрытие позиции
             self.logger.info(
