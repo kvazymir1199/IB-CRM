@@ -185,8 +185,18 @@ class SignalManager:
             )
             return False
 
-        # Получаем текущее время
+        # Получаем текущее время (UTC)
         current_time = timezone.now()
+        
+        # Логируем параметры сигнала для диагностики
+        logger.info(
+            f"Параметры сигнала {signal.id} (Magic: {signal.magic_number}):\n"
+            f"Месяц входа: {signal.entry_month}\n"
+            f"День входа: {signal.entry_day}\n"
+            f"Время открытия: {signal.open_time}\n"
+            f"Текущее время сервера (UTC): {current_time}\n"
+            f"Текущий год: {current_year}"
+        )
 
         # Создаем дату входа в локальном времени
         entry_date = self.local_tz.localize(
@@ -215,6 +225,15 @@ class SignalManager:
         if entry_date_utc > current_time:
             self._create_bot_signal(signal, current_year)
             return True
+        
+        # Проверяем, находится ли время входа в пределах 5 минут от текущего
+        # Это поможет в ситуациях, когда время почти совпадает
+        time_diff_minutes = (current_time - entry_date_utc).total_seconds() / 60
+        if 0 < time_diff_minutes < 5:
+            logger.warning(
+                f"Сигнал {signal} (Magic: {signal.magic_number}) пропущен из-за небольшой разницы во времени.\n"
+                f"Разница всего {time_diff_minutes:.2f} минут. Возможно, нужно обновить время в базе данных."
+            )
 
         logger.info(
             f"Сигнал {signal} (Magic: {signal.magic_number}) не создан, так как дата входа "
