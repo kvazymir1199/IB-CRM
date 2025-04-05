@@ -19,23 +19,10 @@ services:
         echo 'Importing symbols...' &&
         python manage.py import_symbols &&
         echo 'Creating superuser if not exists...' &&
-        python -c \"
-          import django; django.setup();
-          from django.contrib.auth.models import User;
-          from django.db.utils import IntegrityError;
-          import os;
-          username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin');
-          email = os.environ.get('DJANGO_SUPERUSER_EMAIL', 'admin@example.com');
-          password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin');
-          try:
-            if not User.objects.filter(is_superuser=True).exists():
-              User.objects.create_superuser(username, email, password);
-              print(f'Superuser {username} created successfully');
-            else:
-              print('Superuser already exists');
-          except IntegrityError:
-            print('Superuser already exists');
-        \" &&
+        DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin} \
+        DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com} \
+        DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin} \
+        python manage.py createsuperuser --noinput || echo "Superuser already exists." &&
         echo 'Starting Django server...' &&
         python manage.py runserver 0.0.0.0:8000
       "
