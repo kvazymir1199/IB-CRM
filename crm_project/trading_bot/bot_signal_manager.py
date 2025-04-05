@@ -45,36 +45,67 @@ def parse_data(contract_details) -> list:
     trading_hours = []
     data = contract_details.tradingHours
     tz = contract_details.timeZoneId
+    
+    logger.info(f"Парсинг торговых часов. Временная зона контракта: {tz}")
+    logger.info(f"Полученные данные: {data}")
+    
     for entry in data.split(";"):
-        data, status = entry.split(":", 1)
+        if not entry.strip():
+            continue
+            
+        parts = entry.split(":", 1)
+        if len(parts) < 2:
+            logger.warning(f"Неверный формат данных торговых часов: {entry}")
+            continue
+            
+        data, status = parts
+        
         if status == "CLOSED":
             trading_hours.append(
                 TradingHours(status="CLOSED", start=None, end=None)
             )
         else:
-            start = datetime(
-                year=int(entry[0:4]),
-                month=int(entry[4:6]),
-                day=int(entry[6:8]),
-                hour=int(entry[9:11]),
-                minute=int(entry[11:13]),
-                tzinfo=pytz.timezone(tz),
-            )
-            end = datetime(
-                year=int(entry[14:18]),
-                month=int(entry[18:20]),
-                day=int(entry[20:22]),
-                hour=int(entry[23:25]),
-                minute=int(entry[25:27]),
-                tzinfo=pytz.timezone(tz),
-            )
-            trading_hours.append(
-                TradingHours(
-                    status="OPEN",
-                    start=start,
-                    end=end,
+            try:
+                # Проверяем корректность формата данных
+                if len(data) < 28:
+                    logger.warning(f"Неверная длина данных торговых часов: {data}")
+                    continue
+                
+                start = datetime(
+                    year=int(data[0:4]),
+                    month=int(data[4:6]),
+                    day=int(data[6:8]),
+                    hour=int(data[9:11]),
+                    minute=int(data[11:13]),
+                    tzinfo=pytz.timezone(tz),
                 )
-            )
+                
+                end = datetime(
+                    year=int(data[14:18]),
+                    month=int(data[18:20]),
+                    day=int(data[20:22]),
+                    hour=int(data[23:25]),
+                    minute=int(data[25:27]),
+                    tzinfo=pytz.timezone(tz),
+                )
+                
+                logger.info(
+                    f"Создано расписание: {start.strftime('%Y-%m-%d %H:%M')} "
+                    f"({start.tzname()} UTC{start.strftime('%z')}) - "
+                    f"{end.strftime('%Y-%m-%d %H:%M')} "
+                    f"({end.tzname()} UTC{end.strftime('%z')})"
+                )
+                
+                trading_hours.append(
+                    TradingHours(
+                        status="OPEN",
+                        start=start,
+                        end=end,
+                    )
+                )
+            except (ValueError, IndexError) as e:
+                logger.error(f"Ошибка при парсинге данных торговых часов: {data} - {str(e)}")
+    
     return trading_hours
 
 
@@ -91,8 +122,9 @@ class BotSignalManager:
         """
         Получение текущего времени от IB Gateway
         """
-
-        return self.ib_connector.reqCurrentTime()
+        current_time = self.ib_connector.reqCurrentTime()
+        
+        return current_time
 
     def manage_signals(self) -> None:
         """
@@ -225,9 +257,15 @@ class BotSignalManager:
             for day in trading_schedule:
 
                 if day.status == "OPEN":
-                    self.logger.info(f"торговые часы открыты: {day.start} - {day.end} сейчас {self.current_time}")
+                    self.logger.info(
+                        f"торговые часы открыты: {day.start} ({day.start.tzname()} UTC{day.start.strftime('%z')}) - "
+                        f"{day.end} ({day.end.tzname()} UTC{day.end.strftime('%z')}) "
+                        f"сейчас {self.current_time} ({self.current_time.tzname()} UTC{self.current_time.strftime('%z')})"
+                    )
                     if self.current_time >= day.start and self.current_time <= day.end:
-                        self.logger.info(f"торговые часы открыты: {day.start} - {day.end} сейчас {self.current_time}")
+                        self.logger.info(
+                            f"Текущее время в торговых часах! Сессия: {day.start} - {day.end}, текущее время: {self.current_time}"
+                        )
                         return True
             return False
 
