@@ -16,6 +16,8 @@ services:
         python manage.py makemigrations trading_bot &&
         echo 'Applying migrations...' &&
         python manage.py migrate &&
+        echo 'Importing symbols...' &&
+        python manage.py import_symbols &&
         echo 'Starting Django server...' &&
         python manage.py runserver 0.0.0.0:8000
       "
@@ -31,21 +33,6 @@ services:
     networks:
       - app-network
 
-#  celery:
-#    build:
-#      context: ./crm_project
-#      dockerfile: dockerfiles/Dockerfile.celery
-#    volumes:
-#      - ./crm_project:/app
-#    environment:
-#      - DJANGO_SETTINGS_MODULE=crm_project.settings
-#      - CELERY_BROKER_URL=redis://redis:6379/0
-#      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-#    depends_on:
-#      - redis
-#      - web
-#    networks:
-#      - app-network
 
   celery-bot:
     build: 
