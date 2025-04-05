@@ -6,9 +6,7 @@ import logging
 from django.utils import timezone
 import pytz
 from signals.models import SeasonalSignal
-from django.apps import apps
 from trading_bot.models import BotSeasonalSignal
-from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -103,37 +101,31 @@ class SignalManager:
 
         for bot_signal in bot_signals:
             try:
-                # Создаем новые даты в локальном времени
-                entry_date = self.local_tz.localize(
-                    timezone.datetime(
-                        year=bot_signal.entry_date.year,
-                        month=seasonal_signal.entry_month,
-                        day=seasonal_signal.entry_day,
-                        hour=seasonal_signal.open_time.hour,
-                        minute=seasonal_signal.open_time.minute,
-                    )
+                # Создаем новые даты в фиксированном часовом поясе UTC+1
+                entry_date = self.create_date_with_fixed_timezone(
+                    year=bot_signal.entry_date.year,
+                    month=seasonal_signal.entry_month,
+                    day=seasonal_signal.entry_day,
+                    hour=seasonal_signal.open_time.hour,
+                    minute=seasonal_signal.open_time.minute
                 )
 
-                exit_date = self.local_tz.localize(
-                    timezone.datetime(
-                        year=bot_signal.exit_date.year,
-                        month=seasonal_signal.takeprofit_month,
-                        day=seasonal_signal.takeprofit_day,
-                        hour=seasonal_signal.close_time.hour,
-                        minute=seasonal_signal.close_time.minute,
-                    )
+                exit_date = self.create_date_with_fixed_timezone(
+                    year=bot_signal.exit_date.year,
+                    month=seasonal_signal.takeprofit_month,
+                    day=seasonal_signal.takeprofit_day,
+                    hour=seasonal_signal.close_time.hour,
+                    minute=seasonal_signal.close_time.minute
                 )
 
                 # Проверяем, нужно ли перенести дату выхода на следующий год
                 if exit_date < entry_date:
-                    exit_date = self.local_tz.localize(
-                        timezone.datetime(
-                            year=bot_signal.exit_date.year + 1,
-                            month=seasonal_signal.takeprofit_month,
-                            day=seasonal_signal.takeprofit_day,
-                            hour=seasonal_signal.close_time.hour,
-                            minute=seasonal_signal.close_time.minute,
-                        )
+                    exit_date = self.create_date_with_fixed_timezone(
+                        year=bot_signal.exit_date.year + 1,
+                        month=seasonal_signal.takeprofit_month,
+                        day=seasonal_signal.takeprofit_day,
+                        hour=seasonal_signal.close_time.hour,
+                        minute=seasonal_signal.close_time.minute
                     )
 
                 # Обновляем даты только если они изменились
@@ -147,8 +139,8 @@ class SignalManager:
 
                     logger.info(
                         f"Обновлен BotSeasonalSignal {bot_signal}:\n"
-                        f"Новая дата входа (Local): {entry_date}\n"
-                        f"Новая дата выхода (Local): {exit_date}"
+                        f"Новая дата входа (UTC+1): {entry_date}\n"
+                        f"Новая дата выхода (UTC+1): {exit_date}"
                     )
                     updated_count += 1
 
@@ -198,23 +190,21 @@ class SignalManager:
             f"Текущий год: {current_year}"
         )
 
-        # Создаем дату входа в локальном времени
-        entry_date = self.local_tz.localize(
-            timezone.datetime(
-                year=current_year,
-                month=signal.entry_month,
-                day=signal.entry_day,
-                hour=signal.open_time.hour,
-                minute=signal.open_time.minute,
-            )
+        # Создаем дату входа в фиксированном часовом поясе UTC+1
+        entry_date = self.create_date_with_fixed_timezone(
+            year=current_year,
+            month=signal.entry_month,
+            day=signal.entry_day,
+            hour=signal.open_time.hour,
+            minute=signal.open_time.minute
         )
 
-        # Преобразуем локальное время entry_date в UTC для правильного сравнения
+        # Преобразуем время в UTC для правильного сравнения
         entry_date_utc = entry_date.astimezone(pytz.UTC)
 
         logger.info(
             f"Сравнение дат для сигнала {signal} (Magic: {signal.magic_number}):\n"
-            f"Дата входа (Local {self.local_tz.zone}): {entry_date}\n"
+            f"Дата входа (Fixed UTC+1): {entry_date}\n"
             f"Дата входа (UTC): {entry_date_utc}\n"
             f"Текущее время (UTC): {current_time}\n"
             f"Разница (минуты): {(entry_date_utc - current_time).total_seconds() / 60:.2f}\n"
@@ -250,37 +240,31 @@ class SignalManager:
                    BotSeasonalSignal
             current_year: Текущий год
         """
-        # Создаем даты входа и выхода в локальном времени
-        entry_date = self.local_tz.localize(
-            timezone.datetime(
-                year=current_year,
-                month=signal.entry_month,
-                day=signal.entry_day,
-                hour=signal.open_time.hour,
-                minute=signal.open_time.minute,
-            )
+        # Создаем даты входа и выхода в фиксированном часовом поясе UTC+1
+        entry_date = self.create_date_with_fixed_timezone(
+            year=current_year,
+            month=signal.entry_month,
+            day=signal.entry_day,
+            hour=signal.open_time.hour,
+            minute=signal.open_time.minute
         )
 
-        exit_date = self.local_tz.localize(
-            timezone.datetime(
-                year=current_year,
-                month=signal.takeprofit_month,
-                day=signal.takeprofit_day,
-                hour=signal.close_time.hour,
-                minute=signal.close_time.minute,
-            )
+        exit_date = self.create_date_with_fixed_timezone(
+            year=current_year,
+            month=signal.takeprofit_month,
+            day=signal.takeprofit_day,
+            hour=signal.close_time.hour,
+            minute=signal.close_time.minute
         )
 
         # Если дата выхода меньше даты входа, значит выход в следующем году
         if exit_date < entry_date:
-            exit_date = self.local_tz.localize(
-                timezone.datetime(
-                    year=current_year + 1,
-                    month=signal.takeprofit_month,
-                    day=signal.takeprofit_day,
-                    hour=signal.close_time.hour,
-                    minute=signal.close_time.minute,
-                )
+            exit_date = self.create_date_with_fixed_timezone(
+                year=current_year + 1,
+                month=signal.takeprofit_month,
+                day=signal.takeprofit_day,
+                hour=signal.close_time.hour,
+                minute=signal.close_time.minute
             )
             logger.info(f"Дата выхода перенесена на следующий год: {exit_date}")
 
@@ -290,10 +274,39 @@ class SignalManager:
 
         logger.info(
             f"Создан торговый сигнал {bot_signal}:\n"
-            f"Вход (Local): {entry_date}\n"
-            f"Выход (Local): {exit_date}\n"
+            f"Вход (UTC+1): {entry_date}\n"
+            f"Выход (UTC+1): {exit_date}\n"
             f"Magic: {signal.magic_number}"
         )
+
+    def create_date_with_fixed_timezone(self, year, month, day, hour, minute, 
+                                        fixed_timezone='Etc/GMT-1'):
+        """
+        Создает дату с указанием часового пояса UTC+1 (без учета DST)
+        
+        Args:
+            year: Год
+            month: Месяц
+            day: День
+            hour: Час
+            minute: Минута
+            fixed_timezone: Фиксированный часовой пояс (по умолчанию UTC+1)
+            
+        Returns:
+            datetime: Дата в указанном часовом поясе
+        """
+        # Создаем дату в указанном часовом поясе (UTC+1)
+        fixed_tz = pytz.timezone(fixed_timezone)
+        date_in_fixed_tz = fixed_tz.localize(
+            timezone.datetime(year, month, day, hour, minute)
+        )
+        
+        logger.info(
+            f"Создана дата в фиксированном часовом поясе {fixed_timezone}: "
+            f"{date_in_fixed_tz}"
+        )
+        
+        return date_in_fixed_tz
 
 
 # Создаем глобальный экземпляр менеджера
