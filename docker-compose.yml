@@ -18,13 +18,9 @@ services:
         python manage.py migrate &&
         echo 'Importing symbols...' &&
         python manage.py import_symbols &&
-        echo 'Creating superuser if not exists...' &&
-        export DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin} &&
-        export DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@example.com} &&
-        export DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin} &&
-        python manage.py createsuperuser --noinput 2>/dev/null || echo "Superuser already exists" &&
+
         echo 'Starting Django server...' &&
-        exec python manage.py runserver 0.0.0.0:8000
+        python manage.py runserver 0.0.0.0:8000
       "
     volumes:
       - ./crm_project:/app
@@ -33,9 +29,7 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=crm_project.settings
       - DJANGO_ENV=development
-      - DJANGO_SUPERUSER_USERNAME=admin
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-      - DJANGO_SUPERUSER_PASSWORD=admin
+
     depends_on:
       - redis
     networks:
