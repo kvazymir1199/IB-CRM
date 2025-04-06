@@ -156,7 +156,7 @@ class BotSignalManager:
         contract = ContFuture(
             symbol=_signal.signal.symbol.financial_instrument,
             exchange=_signal.signal.symbol.exchange,
-            currency="USD",
+            #currency="USD",
         )
 
         # Получаем детали контракта с повторными попытками
@@ -220,21 +220,7 @@ class BotSignalManager:
     def parse_data(self,contract_details) -> list:
         trading_hours = []
         data = contract_details.tradingHours
-        tz = contract_details.timeZoneId
-        tz_obj = pytz.timezone(contract_details.timeZoneId)
-
-        logger.info(f"Парсинг торговых часов. Временная зона контракта: {tz}")
-        logger.info(f"Полученные данные: {data}")
-        
-        # Очень заметная отладочная метка
-        logger.info("===== ОТЛАДОЧНАЯ МЕТКА - ПРОВЕРКА ЛОГИРОВАНИЯ =====")
-        logger.info(f"Time current: {self.current_time} :{self.current_time.tzname()}")
-        # Получение дополнительной информации о часовом поясе
-        logger.info(f"Timezone info: {tz}")
-        logger.info(f"Timezone zone: {tz_obj.zone}")
-        logger.info(f"Timezone utcoffset: {tz_obj.utcoffset(datetime.now())}")
-        logger.info(f"Timezone dst: {tz_obj.dst(datetime.now())}")
-        
+        tz = contract_details.timeZoneId    
         for entry in data.split(";"):
             if not entry.strip():
                 continue
@@ -266,11 +252,7 @@ class BotSignalManager:
                     minute=int(data[25:27]),
                     tzinfo=pytz.timezone(tz),
                 ).astimezone(pytz.UTC)
-                
-                logger.info(
-                    f"Создано расписание: {start}: {start.tzname()} - {end}: {end.tzname()} "
-                )
-                
+                          
                 trading_hours.append(
                     TradingHours(
                         status="OPEN",
@@ -287,11 +269,7 @@ class BotSignalManager:
             self.logger.info("[2] Запрос исторических данных...")
 
             # Получаем исторические данные с повторными попытками
-            bars = None
-            for attempt in range(MAX_RETRIES):
-                try:
-                    self.logger.info(f"Попытка получения исторических данных ({attempt + 1}/{MAX_RETRIES})")
-                    bars = self.ib_connector.reqHistoricalData(
+            bars = self.ib_connector.reqHistoricalData(
                         contract,
                         endDateTime='',
                         durationStr='1 D',
@@ -300,16 +278,8 @@ class BotSignalManager:
                         useRTH=True,
                         timeout=HISTORICAL_DATA_TIMEOUT
                     )
-                    if bars:
-                        break
-                except Exception as e:
-                    self.logger.error(f"Ошибка при получении исторических данных: {str(e)}")
-                    if attempt < MAX_RETRIES - 1:
-                        time.sleep(RETRY_DELAY)
-                    continue
-
             if not bars:
-                raise Exception("Не удалось получить исторические данные после всех попыток")
+                raise Exception("Не удалось получить исторические данные")
 
             self.logger.info(f"[3] Получены исторические данные: {len(bars)} баров")
 
@@ -331,6 +301,7 @@ class BotSignalManager:
                 lmtPrice=actual_price,
                 orderId=parent_id,
             )
+            limit_order.tif = "GTC"
             limit_order.transmit = False
             # Устанавливаем время активации
             activation_time = (
@@ -387,10 +358,11 @@ class BotSignalManager:
             stop_order = StopOrder(
                 action=exit_action,
                 totalQuantity=lots,
-                stopPrice=stoploss
+                stopPrice=stoploss,
             )
             stop_order.parentId = trade.order.orderId
             stop_order.transmit = True
+            stop_order.tif = "GTC"
             self.logger.info(f"[18] Связываем стоп-ордер с родительским ордером {trade.order.orderId}")
 
             stop_trade = None
@@ -420,11 +392,22 @@ class BotSignalManager:
             if stop_trade.log:
                 for log in stop_trade.log:
                     self.logger.info(f"[DEBUG] Стоп-ордер лог: {log.message}")
-
+            if trade.order.permId == 0:
+                # Если permId все еще 0, ждем обновления
+                counter = 0
+                while trade.order.permId == 0 and counter < 5:
+                    self.logger.info(f"Ждем получения permId для ордера {trade.order.orderId}...")
+                    self.ib_connector.sleep(1)  # Еще подождем
+                    counter += 1
+            if trade.order.permId == 0:
+                self.logger.warning(f"Не удалось получить permId для ордера {trade.order.orderId}")
+            else:
+                logger.info(f"Ордер размещен. orderId: {trade.order.orderId}, permId: {trade.order.permId}")
+    
             # Сохраняем ID ордера в сигнале
-            signal.order_id = parent_id
+            signal.order_id = trade.order.orderId
             signal.save()
-            self.logger.info(f"[21] Сохранен ID ордера {parent_id} в сигнале {signal.pk}")
+            self.logger.info(f"[21] Сохранен perm ID ордера {trade.order} в сигнале {signal.pk}")
             self.logger.info(
                 f"[DEBUG] StopOrder -> action={stop_order.action}, "
                 f"qty={stop_order.totalQuantity}, stopPrice={stop_order.auxPrice}, "

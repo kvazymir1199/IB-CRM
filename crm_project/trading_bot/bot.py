@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 import time
-
+import random
 import django
 from ib_insync import IB, util
 from trading_bot.bot_signal_manager import BotSignalManager
@@ -33,8 +33,8 @@ class TradingBot:
         host: str = None,
         port: int = None,
         client_id: int = None,
-        max_retries: int = 3,
-        retry_delay: int = 5,
+        max_retries: int = 1,
+        retry_delay: int = 2,
     ):
         """
         Инициализация подключения к IB Gateway
@@ -53,7 +53,7 @@ class TradingBot:
         self.connected = False
         self.host = host or settings.IB_HOST
         self.port = port or settings.IB_PORT
-        self.client_id = client_id or settings.IB_CLIENT_ID
+        self.client_id = random.randint(100, 9999)
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.signal_manager = None
