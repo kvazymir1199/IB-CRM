@@ -18,6 +18,8 @@ services:
         python manage.py migrate &&
         echo 'Importing symbols...' &&
         python manage.py import_symbols &&
+        echo 'Creating superuser...' &&
+        python manage.py create_superuser &&
 
         echo 'Starting Django server...' &&
         python manage.py runserver 0.0.0.0:8000

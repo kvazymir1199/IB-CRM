@@ -65,7 +65,8 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 
 # Часовой пояс: Europe/Berlin (UTC+1, но UTC+2 во время летнего периода)
-TIME_ZONE = os.getenv("TZ", "Europe/Berlin")
+TIME_ZONE = os.getenv("TZ", "Etc/GMT-1")  # Без DST, UTC+2
+
 
 USE_I18N = True
 
@@ -110,7 +111,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format': '{levelname} {asctime} {message}',
             'style': '{',
         },
         'simple': {

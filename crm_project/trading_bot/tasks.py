@@ -20,7 +20,7 @@ def check_signals():
         apps.check_apps_ready()
         # Импортируем signal_manager только когда задача выполняется
         from trading_bot.signal_manager import signal_manager
-        logger.info("Проверка сигналов завершена")
+    
         return signal_manager.check_signals()
     except AppRegistryNotReady:
         logger.warning("Приложения Django не готовы, повторная попытка через 5 секунд")
@@ -29,7 +29,7 @@ def check_signals():
         return "Waiting for Django apps to be ready..."
 
 
-@shared_task(queue='bot_queue')
+@shared_task(queue='bot_queue', unique_on=['manage_bot'])
 def manage_bot():
     """Задача для управления торговым ботом"""
     logger.info("Запуск задачи manage_bot")

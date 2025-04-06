@@ -25,7 +25,7 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 app.conf.beat_schedule = {
     'check-signals': {
         'task': 'trading_bot.tasks.check_signals',
-        'schedule': 60.0,  # каждую минуту
+        'schedule': 15.0,  # каждую минуту
     },
     "manage_bot": {
         'task': 'trading_bot.tasks.manage_bot',
