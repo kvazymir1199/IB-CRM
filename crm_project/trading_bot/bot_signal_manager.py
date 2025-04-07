@@ -44,7 +44,6 @@ class TradingHours:
 
 
 
-
 class BotSignalManager:
     """
     Класс для управления сигналами торгового бота

@@ -59,34 +59,34 @@ const modal = {
         if (type === 'seasonal') {
             const fields = [
                 { name: 'magic_number', label: 'Magic Number', type: 'number' },
-                { name: 'symbol', label: 'Символ', type: 'text' },
-                { name: 'month', label: 'Месяц', type: 'number', min: 1, max: 12 },
-                { name: 'entry_month', label: 'Месяц входа', type: 'number', min: 1, max: 12 },
-                { name: 'entry_day', label: 'День входа', type: 'number', min: 1, max: 31 },
-                { name: 'takeprofit_month', label: 'Месяц выхода', type: 'number', min: 1, max: 12 },
-                { name: 'takeprofit_day', label: 'День выхода', type: 'number', min: 1, max: 31 },
-                { name: 'stoploss', label: 'Стоп-лосс', type: 'number', step: '0.01' },
-                { name: 'risk', label: 'Риск (%)', type: 'number', step: '0.01' },
+                { name: 'symbol', label: 'Symbol', type: 'text' },
+                { name: 'month', label: 'Month', type: 'number', min: 1, max: 12 },
+                { name: 'entry_month', label: 'Month of entry', type: 'number', min: 1, max: 12 },
+                { name: 'entry_day', label: 'Day of entry', type: 'number', min: 1, max: 31 },
+                { name: 'takeprofit_month', label: 'Month of exit', type: 'number', min: 1, max: 12 },
+                { name: 'takeprofit_day', label: 'Day of exit', type: 'number', min: 1, max: 31 },
+                { name: 'stoploss', label: 'Stop loss', type: 'number', step: '0.01' },
+                { name: 'risk', label: 'Risk (%)', type: 'number', step: '0.01' },
                 {
                     name: 'stoploss_type',
-                    label: 'Тип стоп-лосса',
+                    label: 'Stop loss type',
                     type: 'select',
                     options: [
-                        { value: 'POINTS', label: 'Пункты' },
-                        { value: 'PERCENTAGE', label: 'Проценты' }
+                        { value: 'POINTS', label: 'Points' },
+                        { value: 'PERCENTAGE', label: 'Percentage' }
                     ]
                 },
                 {
                     name: 'direction',
-                    label: 'Направление',
+                    label: 'Direction',
                     type: 'select',
                     options: [
                         { value: 'LONG', label: 'Long' },
                         { value: 'SHORT', label: 'Short' }
                     ]
                 },
-                { name: 'open_time', label: 'Время открытия', type: 'time' },
-                { name: 'close_time', label: 'Время закрытия', type: 'time' }
+                { name: 'open_time', label: 'Open time', type: 'time' },
+                { name: 'close_time', label: 'Close time', type: 'time' }
             ];
 
             seasonalFields.innerHTML = '';

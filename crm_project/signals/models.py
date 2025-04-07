@@ -22,8 +22,8 @@ class Symbol(models.Model):
 
     class Meta:
         ordering = ['financial_instrument']
-        verbose_name = 'Символ'
-        verbose_name_plural = 'Символы'
+        verbose_name = 'Symbol'
+        verbose_name_plural = 'Symbols'
 
 
 class Signal(models.Model):
@@ -36,7 +36,7 @@ class Signal(models.Model):
     symbol = models.ForeignKey(
         Symbol,
         on_delete=models.PROTECT,
-        verbose_name='Символ'
+        verbose_name='Symbol'
     )
     stoploss = models.DecimalField(max_digits=10, decimal_places=2)
     stoploss_type = models.CharField(

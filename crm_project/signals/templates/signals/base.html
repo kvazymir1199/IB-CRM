@@ -2,7 +2,7 @@
 {% load signal_filters %}
 
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,8 +22,8 @@
         <div class="container">
             <a href="{% url 'signals:home' %}" class="navbar-brand">IB CRM</a>
             <div class="navbar-menu">
-                <a href="{% url 'signals:home' %}" class="nav-link">Главная</a>
-                <a href="{% url 'admin:index' %}" class="nav-link">Админка</a>
+                <a href="{% url 'signals:home' %}" class="nav-link">Main</a>
+                <a href="{% url 'admin:index' %}" class="nav-link">Admin</a>
             </div>
         </div>
     </nav>
@@ -32,33 +32,33 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Модальное окно для добавления сигнала -->
+    <!-- Modal window for adding a signal -->
     <div id="signalModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Добавить сигнал</h2>
-                <button class="close" aria-label="Закрыть">&times;</button>
+                <h2>Create Signal</h2>
+                <button class="close" aria-label="Close">&times;</button>
             </div>
             
             <div class="modal-body">
                 <div class="signal-type-selector">
                     <button class="signal-type-btn active" data-type="seasonal">
                         <i class="fas fa-calendar-alt"></i>
-                        Сезонный сигнал
+                        Seasonal Signal
                     </button>
-                    <!-- Здесь можно добавить другие типы сигналов -->
+                    <!-- Other signal types can be added here -->
                 </div>
 
                 <form id="signalForm" class="signal-form">
                     {% csrf_token %}
                     <div id="seasonalSignalFields" class="form-grid">
-                        <!-- Поля будут добавлены динамически через JavaScript -->
+                        <!-- Fields will be added dynamically via JavaScript -->
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary close-btn">Отмена</button>
+                        <button type="button" class="btn btn-secondary close-btn">Cancel</button>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i>
-                            Сохранить
+                            Save
                         </button>
                     </div>
                 </form>

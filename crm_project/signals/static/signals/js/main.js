@@ -77,17 +77,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (response.ok) {
                         symbols = await response.json();
                     } else {
-                        showNotification('error', 'Ошибка!', 'Не удалось загрузить список символов');
+                        showNotification('error', 'Error!', 'Failed to load symbol list');
                     }
                 } catch (error) {
-                    showNotification('error', 'Ошибка!', 'Не удалось загрузить список символов');
+                    showNotification('error', 'Error!', 'Failed to load symbol list');
                 }
 
                 const fields = [
                     { name: 'magic_number', label: 'Magic Number', type: 'number' },
                     {
                         name: 'symbol',
-                        label: 'Символ',
+                        label: 'Symbol',
                         type: 'select',
                         options: symbols.map(symbol => ({
                             value: symbol.id,
@@ -96,66 +96,66 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                     {
                         name: 'entry_month',
-                        label: 'Месяц входа',
+                        label: 'Month of entry',
                         type: 'select',
                         options: [
-                            { value: 1, label: 'Январь' },
-                            { value: 2, label: 'Февраль' },
-                            { value: 3, label: 'Март' },
-                            { value: 4, label: 'Апрель' },
-                            { value: 5, label: 'Май' },
-                            { value: 6, label: 'Июнь' },
-                            { value: 7, label: 'Июль' },
-                            { value: 8, label: 'Август' },
-                            { value: 9, label: 'Сентябрь' },
-                            { value: 10, label: 'Октябрь' },
-                            { value: 11, label: 'Ноябрь' },
-                            { value: 12, label: 'Декабрь' }
+                            { value: 1, label: 'January' },
+                            { value: 2, label: 'February' },
+                            { value: 3, label: 'March' },
+                            { value: 4, label: 'April' },
+                            { value: 5, label: 'May' },
+                            { value: 6, label: 'June' },
+                            { value: 7, label: 'July' },
+                            { value: 8, label: 'August' },
+                            { value: 9, label: 'September' },
+                            { value: 10, label: 'October' },
+                            { value: 11, label: 'November' },
+                            { value: 12, label: 'December' }
                         ]
                     },
-                    { name: 'entry_day', label: 'День входа', type: 'number', min: 1, max: 31 },
+                    { name: 'entry_day', label: 'Day of entry', type: 'number', min: 1, max: 31 },
                     {
                         name: 'takeprofit_month',
-                        label: 'Месяц выхода',
+                        label: 'Month of exit',
                         type: 'select',
                         options: [
-                            { value: 1, label: 'Январь' },
-                            { value: 2, label: 'Февраль' },
-                            { value: 3, label: 'Март' },
-                            { value: 4, label: 'Апрель' },
-                            { value: 5, label: 'Май' },
-                            { value: 6, label: 'Июнь' },
-                            { value: 7, label: 'Июль' },
-                            { value: 8, label: 'Август' },
-                            { value: 9, label: 'Сентябрь' },
-                            { value: 10, label: 'Октябрь' },
-                            { value: 11, label: 'Ноябрь' },
-                            { value: 12, label: 'Декабрь' }
+                            { value: 1, label: 'January' },
+                            { value: 2, label: 'February' },
+                            { value: 3, label: 'March' },
+                            { value: 4, label: 'April' },
+                            { value: 5, label: 'May' },
+                            { value: 6, label: 'June' },
+                            { value: 7, label: 'July' },
+                            { value: 8, label: 'August' },
+                            { value: 9, label: 'September' },
+                            { value: 10, label: 'October' },
+                            { value: 11, label: 'November' },
+                            { value: 12, label: 'December' }
                         ]
                     },
-                    { name: 'takeprofit_day', label: 'День выхода', type: 'number', min: 1, max: 31 },
-                    { name: 'stoploss', label: 'Стоп-лосс', type: 'number', step: '0.01' },
-                    { name: 'risk', label: 'Риск (%)', type: 'number', step: '0.01' },
+                    { name: 'takeprofit_day', label: 'Day of exit', type: 'number', min: 1, max: 31 },
+                    { name: 'stoploss', label: 'Stop loss', type: 'number', step: '0.01' },
+                    { name: 'risk', label: 'Risk (%)', type: 'number', step: '0.01' },
                     {
                         name: 'stoploss_type',
-                        label: 'Тип стоп-лосса',
+                        label: 'Stop loss type',
                         type: 'select',
                         options: [
-                            { value: 'POINTS', label: 'Пункты' },
-                            { value: 'PERCENTAGE', label: 'Проценты' }
+                            { value: 'POINTS', label: 'Points' },
+                            { value: 'PERCENTAGE', label: 'Percentage' }
                         ]
                     },
                     {
                         name: 'direction',
-                        label: 'Направление',
+                        label: 'Direction',
                         type: 'select',
                         options: [
                             { value: 'LONG', label: 'Long' },
                             { value: 'SHORT', label: 'Short' }
                         ]
                     },
-                    { name: 'open_time', label: 'Время открытия', type: 'time' },
-                    { name: 'close_time', label: 'Время закрытия', type: 'time' }
+                    { name: 'open_time', label: 'Open time', type: 'time' },
+                    { name: 'close_time', label: 'Close time', type: 'time' }
                 ];
 
                 seasonalSignalFields.innerHTML = '';
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (field.name === 'symbol') {
                                 const emptyOption = document.createElement('option');
                                 emptyOption.value = '';
-                                emptyOption.textContent = 'Выберите символ';
+                                emptyOption.textContent = 'Select symbol';
                                 input.appendChild(emptyOption);
                             }
                             field.options.forEach(option => {
@@ -237,17 +237,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     const responseData = await response.json();
 
                     if (response.ok) {
-                        showNotification('success', 'Успех!', 'Сигнал успешно создан');
+                        showNotification('success', 'Success!', 'Signal created successfully');
                         modal.style.display = 'none';
                         setTimeout(() => {
                             window.location.reload();
                         }, 1000);
                     } else {
-                        let errorMessage = responseData.error || responseData.magic_number?.[0] || 'Произошла ошибка при создании сигнала';
-                        showNotification('error', 'Ошибка!', errorMessage);
+                        let errorMessage = responseData.error || responseData.magic_number?.[0] || 'An error occurred while creating a signal';
+                        showNotification('error', 'Error!', errorMessage);
                     }
                 } catch (error) {
-                    showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке формы');
+                    showNotification('error', 'Error!', 'An error occurred while sending the form');
                 }
             });
         }
@@ -327,18 +327,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.log('Response data:', responseData);
 
                     if (response.ok) {
-                        showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
+                        showNotification('success', 'Success!', 'Signal updated successfully');
                         closeModal();
                         setTimeout(() => {
                             window.location.reload();
                         }, 1000);
                     } else {
-                        let errorMessage = responseData.error || responseData.magic_number?.[0] || 'Произошла ошибка при обновлении сигнала';
-                        showNotification('error', 'Ошибка!', errorMessage);
+                        let errorMessage = responseData.error || responseData.magic_number?.[0] || 'An error occurred while updating the signal';
+                        showNotification('error', 'Error!', errorMessage);
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    showNotification('error', 'Ошибка!', 'Произошла ошибка при отправке данных');
+                    showNotification('error', 'Error!', 'An error occurred while sending data');
                 }
             });
         }

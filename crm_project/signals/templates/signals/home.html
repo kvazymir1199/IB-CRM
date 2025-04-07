@@ -1,37 +1,37 @@
 {% extends 'signals/base.html' %}
 
-{% block title %}Торговые сигналы{% endblock %}
+{% block title %}Trading Signals{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Торговые сигналы</h1>
+    <h1>Trading Signals</h1>
     <div class="header-buttons">
         <button class="btn btn-primary" id="addSignalBtn">
             <span class="btn-icon">+</span>
-            Добавить сигнал
+            Add Signal
         </button>
         <button class="btn" id="toggleBotBtn">
             <span class="btn-icon">🤖</span>
-            <span class="bot-status">Запустить бота</span>
+            <span class="bot-status">Start Bot</span>
         </button>
     </div>
 </div>
 
 <div class="filters">
     <div class="search-box">
-        <input type="text" class="form-control" placeholder="Поиск сигналов...">
+        <input type="text" class="form-control" placeholder="Search signals...">
         <span class="search-icon">🔍</span>
     </div>
     <div class="filter-group">
         <select class="form-control">
-            <option value="">Все направления</option>
+            <option value="">All Directions</option>
             <option value="long">Long</option>
             <option value="short">Short</option>
         </select>
     </div>
     <div class="filter-group">
         <select class="form-control">
-            <option value="">Все символы</option>
+            <option value="">All Symbols</option>
             <option value="silver">Silver</option>
             <option value="gold">Gold</option>
         </select>
@@ -52,23 +52,23 @@
                 <span class="signal-value">{{ signal.magic_number }}</span>
             </div>
             <div class="signal-info">
-                <span class="signal-label">Вход</span>
+                <span class="signal-label">Entry</span>
                 <span class="signal-value">{{ signal.entry_month }}/{{ signal.entry_day }}</span>
             </div>
             <div class="signal-info">
-                <span class="signal-label">Выход</span>
+                <span class="signal-label">Exit</span>
                 <span class="signal-value">{{ signal.takeprofit_month }}/{{ signal.takeprofit_day }}</span>
             </div>
             <div class="signal-info">
-                <span class="signal-label">Риск</span>
+                <span class="signal-label">Risk</span>
                 <span class="signal-value">{{ signal.risk }}%</span>
             </div>
             <div class="signal-info">
-                <span class="signal-label">Стоп-лосс</span>
+                <span class="signal-label">Stop Loss</span>
                 <span class="signal-value">{{ signal.stoploss }} ({{ signal.stoploss_type }})</span>
             </div>
             <div class="signal-info">
-                <span class="signal-label">Время открытия</span>
+                <span class="signal-label">Open Time</span>
                 <span class="signal-value">{{ signal.open_time|date:"H:i" }}</span>
             </div>
         </div>
@@ -78,10 +78,10 @@
 {% else %}
 <div class="empty-state">
     <div class="empty-state-icon">📊</div>
-    <div class="empty-state-text">Пока нет сигналов</div>
+    <div class="empty-state-text">No signals yet</div>
     <button class="btn btn-primary" id="addFirstSignalBtn">
         <span class="btn-icon">+</span>
-        Добавить первый сигнал
+        Add First Signal
     </button>
 </div>
 {% endif %}
@@ -93,14 +93,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleBotBtn = document.getElementById('toggleBotBtn');
     const botStatus = toggleBotBtn.querySelector('.bot-status');
     
-    // Получаем начальное состояние бота
+    // Get initial bot state
     fetch('/trading_bot/api/bot/state/')
         .then(response => response.json())
         .then(data => {
             updateBotButton(data.is_running);
         });
     
-    // Обработчик клика по кнопке
+    // Button click handler
     toggleBotBtn.addEventListener('click', function() {
         fetch('/trading_bot/api/bot/toggle/', {
             method: 'POST',
@@ -116,10 +116,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateBotButton(isRunning) {
         toggleBotBtn.className = `btn ${isRunning ? 'btn-success' : 'btn-secondary'}`;
-        botStatus.textContent = isRunning ? 'Остановить бота' : 'Запустить бота';
+        botStatus.textContent = isRunning ? 'Stop Bot' : 'Start Bot';
     }
     
-    // Функция для получения CSRF токена
+    // Function to get CSRF token
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {

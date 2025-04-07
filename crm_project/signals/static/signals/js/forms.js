@@ -19,15 +19,15 @@ const forms = {
             });
 
             if (response.ok) {
-                showNotification('Успех', 'Сигнал успешно добавлен');
+                showNotification('Success', 'Signal created successfully');
                 modal.close();
                 window.location.reload();
             } else {
                 const error = await response.json();
-                showNotification('Ошибка', error.message || 'Произошла ошибка при добавлении сигнала', 'error');
+                showNotification('Error', error.message || 'An error occurred while creating a signal', 'error');
             }
         } catch (error) {
-            showNotification('Ошибка', 'Произошла ошибка при отправке формы', 'error');
+            showNotification('Error', 'An error occurred while sending the form', 'error');
         }
     },
 

@@ -14,18 +14,18 @@ from .serializers import SeasonalSignalSerializer, SymbolSerializer
 
 # Словарь для отображения месяцев
 MONTHS = {
-    1: 'Январь',
-    2: 'Февраль',
-    3: 'Март',
-    4: 'Апрель',
-    5: 'Май',
-    6: 'Июнь',
-    7: 'Июль',
-    8: 'Август',
-    9: 'Сентябрь',
-    10: 'Октябрь',
-    11: 'Ноябрь',
-    12: 'Декабрь'
+    1: 'January',
+    2: 'February',
+    3: 'March',
+    4: 'April',
+    5: 'May',
+    6: 'June',
+    7: 'July',
+    8: 'August',
+    9: 'September',
+    10: 'October',
+    11: 'November',
+    12: 'December'
 }
 
 
@@ -70,18 +70,18 @@ class SeasonalSignalViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "id": serializer.instance.id, 
-                    "message": "Сигнал успешно создан"
+                    "message": "Signal created successfully"
                 },
                 status=status.HTTP_201_CREATED,
             )
         except IntegrityError as e:
             if "UNIQUE constraint" in str(e):
                 return Response(
-                    {"error": "Сигнал с таким Magic Number уже существует"},
+                    {"error": "Signal with this Magic Number already exists"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             return Response(
-                {"error": "Ошибка при сохранении сигнала"},
+                {"error": "Error saving signal"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except Exception as e:
@@ -97,13 +97,13 @@ class SeasonalSignalViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
             return Response({
-                "message": "Сигнал успешно обновлен",
+                "message": "Signal updated successfully",
                 "id": instance.id
             })
         except ValidationError as e:
             return Response(
                 {
-                    "error": "Ошибка валидации: " + ", ".join(e.messages)
+                    "error": "Validation error: " + ", ".join(e.messages)
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

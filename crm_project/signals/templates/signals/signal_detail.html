@@ -1,90 +1,90 @@
 {% extends 'signals/base.html' %}
 {% load signal_filters %}
 
-{% block title %}{{ signal.symbol }} - Детали сигнала{% endblock %}
+{% block title %}{{ signal.symbol }} - Signal Details{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="detail-header">
         <a href="{% url 'signals:home' %}" class="back-link">
             <i class="fas fa-arrow-left back-icon"></i>
-            Назад к списку
+            Back to List
         </a>
         <h1>{{ signal.symbol }}</h1>
         <button id="editSignalBtn" class="btn btn-primary">
             <i class="fas fa-edit"></i>
-            Редактировать
+            Edit
         </button>
     </div>
 
     <div class="detail-card">
         <div class="detail-section">
-            <h2 class="detail-section-title">Основная информация</h2>
+            <h2 class="detail-section-title">Basic Information</h2>
             <div class="detail-grid">
                 <div class="detail-item">
                     <div class="detail-label">Magic Number</div>
                     <div class="detail-value">{{ signal.magic_number }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Символ</div>
+                    <div class="detail-label">Symbol</div>
                     <div class="detail-value">{{ signal.symbol }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Направление</div>
+                    <div class="detail-label">Direction</div>
                     <div class="detail-value">{{ signal.get_direction_display }}</div>
                 </div>
             </div>
         </div>
 
         <div class="detail-section">
-            <h2 class="detail-section-title">Параметры входа</h2>
+            <h2 class="detail-section-title">Entry Parameters</h2>
             <div class="detail-grid">
                 <div class="detail-item">
-                    <div class="detail-label">Месяц входа</div>
+                    <div class="detail-label">Entry Month</div>
                     <div class="detail-value">{{ months|get_item:signal.entry_month }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">День входа</div>
+                    <div class="detail-label">Entry Day</div>
                     <div class="detail-value">{{ signal.entry_day }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Время открытия</div>
+                    <div class="detail-label">Open Time</div>
                     <div class="detail-value">{{ signal.open_time }}</div>
                 </div>
             </div>
         </div>
 
         <div class="detail-section">
-            <h2 class="detail-section-title">Параметры выхода</h2>
+            <h2 class="detail-section-title">Exit Parameters</h2>
             <div class="detail-grid">
                 <div class="detail-item">
-                    <div class="detail-label">Месяц выхода</div>
+                    <div class="detail-label">Exit Month</div>
                     <div class="detail-value">{{ months|get_item:signal.takeprofit_month }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">День выхода</div>
+                    <div class="detail-label">Exit Day</div>
                     <div class="detail-value">{{ signal.takeprofit_day }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Время закрытия</div>
+                    <div class="detail-label">Close Time</div>
                     <div class="detail-value">{{ signal.close_time }}</div>
                 </div>
             </div>
         </div>
 
         <div class="detail-section">
-            <h2 class="detail-section-title">Риск-менеджмент</h2>
+            <h2 class="detail-section-title">Risk Management</h2>
             <div class="detail-grid">
                 <div class="detail-item">
-                    <div class="detail-label">Стоп-лосс</div>
+                    <div class="detail-label">Stop Loss</div>
                     <div class="detail-value">{{ signal.stoploss }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Тип стоп-лосса</div>
+                    <div class="detail-label">Stop Loss Type</div>
                     <div class="detail-value">{{ signal.get_stoploss_type_display }}</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">Риск (%)</div>
+                    <div class="detail-label">Risk (%)</div>
                     <div class="detail-value">{{ signal.risk }}</div>
                 </div>
             </div>
@@ -92,12 +92,12 @@
     </div>
 </div>
 
-<!-- Модальное окно редактирования -->
+<!-- Edit Modal -->
 <div id="editModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Редактирование сигнала</h2>
-            <button class="close" aria-label="Закрыть">&times;</button>
+            <h2>Edit Signal</h2>
+            <button class="close" aria-label="Close">&times;</button>
         </div>
         
         <div class="modal-body">
@@ -108,7 +108,7 @@
                     <input type="number" id="magic_number" name="magic_number" class="form-control" value="{{ signal.magic_number }}" required>
                 </div>
                 <div class="form-group">
-                    <label for="symbol">Символ</label>
+                    <label for="symbol">Symbol</label>
                     <select id="symbol" name="symbol" class="form-control" required>
                         {% for symbol in symbols %}
                             <option value="{{ symbol.id }}" {% if signal.symbol.id == symbol.id %}selected{% endif %}>
@@ -118,7 +118,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="entry_month">Месяц входа</label>
+                    <label for="entry_month">Entry Month</label>
                     <select id="entry_month" name="entry_month" class="form-control" required>
                         {% for month_num, month_name in months.items %}
                             <option value="{{ month_num }}" {% if signal.entry_month == month_num %}selected{% endif %}>
@@ -128,11 +128,11 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="entry_day">День входа</label>
+                    <label for="entry_day">Entry Day</label>
                     <input type="number" id="entry_day" name="entry_day" class="form-control" value="{{ signal.entry_day }}" min="1" max="31" required>
                 </div>
                 <div class="form-group">
-                    <label for="takeprofit_month">Месяц выхода</label>
+                    <label for="takeprofit_month">Exit Month</label>
                     <select id="takeprofit_month" name="takeprofit_month" class="form-control" required>
                         {% for month_num, month_name in months.items %}
                             <option value="{{ month_num }}" {% if signal.takeprofit_month == month_num %}selected{% endif %}>
@@ -142,34 +142,34 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="takeprofit_day">День выхода</label>
+                    <label for="takeprofit_day">Exit Day</label>
                     <input type="number" id="takeprofit_day" name="takeprofit_day" class="form-control" value="{{ signal.takeprofit_day }}" min="1" max="31" required>
                 </div>
                 <div class="form-group">
-                    <label for="open_time">Время открытия</label>
+                    <label for="open_time">Open Time</label>
                     <input type="time" id="open_time" name="open_time" class="form-control" value="{{ signal.open_time|time:'H:i' }}" required>
                 </div>
                 <div class="form-group">
-                    <label for="close_time">Время закрытия</label>
+                    <label for="close_time">Close Time</label>
                     <input type="time" id="close_time" name="close_time" class="form-control" value="{{ signal.close_time|time:'H:i' }}" required>
                 </div>
                 <div class="form-group">
-                    <label for="risk">Риск (%)</label>
+                    <label for="risk">Risk (%)</label>
                     <input type="number" id="risk" name="risk" class="form-control" value="{{ signal.risk }}" step="0.01" required>
                 </div>
                 <div class="form-group">
-                    <label for="stoploss">Стоп-лосс</label>
+                    <label for="stoploss">Stop Loss</label>
                     <input type="number" id="stoploss" name="stoploss" class="form-control" value="{{ signal.stoploss }}" step="0.01" required>
                 </div>
                 <div class="form-group">
-                    <label for="stoploss_type">Тип стоп-лосса</label>
+                    <label for="stoploss_type">Stop Loss Type</label>
                     <select id="stoploss_type" name="stoploss_type" class="form-control" required>
-                        <option value="POINTS" {% if signal.stoploss_type == 'POINTS' %}selected{% endif %}>Пункты</option>
-                        <option value="PERCENTAGE" {% if signal.stoploss_type == 'PERCENTAGE' %}selected{% endif %}>Проценты</option>
+                        <option value="POINTS" {% if signal.stoploss_type == 'POINTS' %}selected{% endif %}>Points</option>
+                        <option value="PERCENTAGE" {% if signal.stoploss_type == 'PERCENTAGE' %}selected{% endif %}>Percentage</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="direction">Направление</label>
+                    <label for="direction">Direction</label>
                     <select id="direction" name="direction" class="form-control" required>
                         <option value="LONG" {% if signal.direction == 'LONG' %}selected{% endif %}>Long</option>
                         <option value="SHORT" {% if signal.direction == 'SHORT' %}selected{% endif %}>Short</option>
@@ -179,10 +179,10 @@
         </div>
         
         <div class="modal-footer">
-            <button type="button" id="cancelEditBtn" class="btn btn-secondary">Отмена</button>
+            <button type="button" id="cancelEditBtn" class="btn btn-secondary">Cancel</button>
             <button type="submit" form="editSignalForm" class="btn btn-primary">
                 <i class="fas fa-save"></i>
-                Сохранить
+                Save
             </button>
         </div>
     </div>
@@ -217,13 +217,13 @@
         const editForm = document.getElementById('editSignalForm');
 
         if (editBtn && editModal && editForm) {
-            // Открытие модального окна
+            // Opening modal window
             editBtn.addEventListener('click', function() {
                 editModal.style.display = 'block';
                 document.body.style.overflow = 'hidden';
             });
 
-            // Закрытие модального окна
+            // Closing modal window
             function closeModal() {
                 editModal.style.display = 'none';
                 document.body.style.overflow = 'auto';
@@ -232,14 +232,14 @@
             if (closeBtn) closeBtn.addEventListener('click', closeModal);
             if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-            // Закрытие при клике вне модального окна
+            // Close when clicking outside the modal
             window.addEventListener('click', function(event) {
                 if (event.target === editModal) {
                     closeModal();
                 }
             });
 
-            // Обработка отправки формы
+            // Form submission handling
             editForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const formData = new FormData(editForm);
@@ -273,17 +273,17 @@
                     const result = await response.json();
 
                     if (!response.ok) {
-                        throw new Error(result.error || 'Произошла ошибка при обновлении сигнала');
+                        throw new Error(result.error || 'An error occurred while updating the signal');
                     }
 
-                    window.showNotification('success', 'Успех!', 'Сигнал успешно обновлен');
+                    window.showNotification('success', 'Success!', 'Signal successfully updated');
                     closeModal();
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
                 } catch (error) {
                     console.error('Error:', error);
-                    window.showNotification('error', 'Ошибка!', error.message || 'Произошла ошибка при отправке данных');
+                    window.showNotification('error', 'Error!', error.message || 'An error occurred while sending data');
                 }
             });
         }
