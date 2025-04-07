@@ -1,5 +1,5 @@
 """
-Модуль для управления позициями торгового бота
+Module for managing trading bot positions
 """
 
 import logging
@@ -12,9 +12,7 @@ import pytz
 import time
 
 from django.utils import timezone
-from ib_insync import LimitOrder, StopOrder, ContFuture, IB, util
-from ib_insync.objects import ExecutionFilter
-from ib_insync.order import MarketOrder
+from ib_insync import LimitOrder, StopOrder, ContFuture, IB, util, MarketOrder
 
 from crm_project.settings import TIME_ZONE
 from trading_bot.models import BotSeasonalSignal, TradeStatus
@@ -22,18 +20,18 @@ from trading_bot.models import BotSeasonalSignal, TradeStatus
 if TYPE_CHECKING:
     pass
 
-# Создаем логгер для модуля
-logger = logging.getLogger('trading_bot.core.bot_signal_manager')
+# Create logger for module
+logger = logging.getLogger("trading_bot.core.bot_signal_manager")
 
-# Отключаем логи ib_insync ниже уровня WARNING
+# Disable ib_insync logs below WARNING level
 util.logToConsole(level=logging.WARNING)
 
-# Константы для таймаутов
-HISTORICAL_DATA_TIMEOUT = 30  # Увеличенный таймаут для исторических данных
-ORDER_TIMEOUT = 20  # Таймаут для операций с ордерами
-CONTRACT_DETAILS_TIMEOUT = 15  # Таймаут для получения деталей контракта
-MAX_RETRIES = 3  # Максимальное количество попыток
-RETRY_DELAY = 5  # Задержка между попытками в секундах
+# Timeout constants
+HISTORICAL_DATA_TIMEOUT = 30  # Increased timeout for historical data
+ORDER_TIMEOUT = 20  # Timeout for order operations
+CONTRACT_DETAILS_TIMEOUT = 15  # Timeout for contract details
+MAX_RETRIES = 3  # Maximum retry attempts
+RETRY_DELAY = 5  # Delay between retries in seconds
 
 
 @dataclasses.dataclass
@@ -41,7 +39,6 @@ class TradingHours:
     status: str
     start: datetime
     end: datetime
-
 
 
 class BotSignalManager:
@@ -58,33 +55,33 @@ class BotSignalManager:
         Получение текущего времени от IB Gateway
         """
         current_time = self.ib_connector.reqCurrentTime()
-        
+
         return current_time.astimezone(ZoneInfo(TIME_ZONE))
 
     def manage_signals(self) -> None:
         """
-        Управление сигналами торгового бота
+        Managing trading bot signals
         """
-        self.logger.info("Начало работы метода manage_signals")
+        self.logger.info("Starting manage_signals method")
         try:
-            self.logger.info("Получение всех сигналов из базы данных")
+            self.logger.info("Getting all signals from database")
             signals = BotSeasonalSignal.objects.all(
                 # exit_date__gt=timezone.now()
             ).select_related("signal", "signal__symbol")
 
-            self.logger.info(f"Найдено сигналов: {signals.count()}")
+            self.logger.info(f"Found signals: {signals.count()}")
             self.current_time = self.get_current_time()
 
             if self.current_time is None:
-                self.logger.error("Не удалось получить текущее время")
+                self.logger.error("Failed to get current time")
                 return
             for signal in signals:
                 self._handle_signal(signal)
 
-            self.logger.info("Завершение работы метода manage_signals")
+            self.logger.info("Finishing manage_signals method")
 
         except Exception as e:
-            self.logger.error(f"Ошибка в методе manage_signals: {str(e)}")
+            self.logger.error(f"Error in manage_signals method: {str(e)}")
             raise
 
     def _handle_signal(self, _signal: BotSeasonalSignal):
@@ -95,48 +92,53 @@ class BotSignalManager:
             _signal: Объект BotSeasonalSignal
         """
         try:
-            self.logger.info("=" * 20 + f" Обработка сигнала {_signal.id} " + "=" * 20)
+            self.logger.info("=" * 20 + f" Processing signal {_signal.id} " + "=" * 20)
             entry_time = timezone.localtime(_signal.entry_date)
             exit_time = timezone.localtime(_signal.exit_date)
             contract = self._get_contract(_signal)
-            
+
             if not _signal.order_id:
-                self.logger.info(f"Сигнал {_signal.pk} не имеет открытого ордера")
+                self.logger.info(f"Signal {_signal.pk} has no open order")
 
                 if self.current_time < entry_time:
-                    self.logger.info(f"Время входа не наступило для сигнала {_signal.pk}")
-                    self.logger.info(f"Текущее время: {self.current_time} время входа: {entry_time}")
+                    self.logger.info(f"Entry time not reached for signal {_signal.pk}")
+                    self.logger.info(
+                        f"Current time: {self.current_time} entry time: {entry_time}"
+                    )
                     return
 
-                self.logger.info(f"Время входа наступило для сигнала {_signal.pk}")
-                self.logger.info("Получение контракта...")
-
+                self.logger.info(f"Entry time reached for signal {_signal.pk}")
+                self.logger.info("Getting contract...")
 
                 if not contract:
-                    self.logger.warning(f"Не удалось получить контракт для сигнала {_signal.pk}")
+                    self.logger.warning(
+                        f"Failed to get contract for signal {_signal.pk}"
+                    )
                     return
 
-                self.logger.info("Открытие ордера...")
+                self.logger.info("Opening order...")
                 if not self._is_trading_time(contract):
-                    self.logger.info(f"Рынок закрыт: {self.current_time}")
-                    self.logger.info(f"Время входа не наступило для сигнала {_signal.pk}")
+                    self.logger.info(f"Market is closed: {self.current_time}")
+                    self.logger.info(f"Entry time not reached for signal {_signal.pk}")
                     return
                 try:
                     self._open_order(_signal, contract.contract)
                 except Exception as e:
-                    self.logger.error(f"Ошибка при открытии ордера: {str(e)}", exc_info=True)
+                    self.logger.error(f"Error opening order: {str(e)}", exc_info=True)
                     return
 
             if self.current_time >= exit_time:
                 if _signal.status != TradeStatus.CLOSE:
-                    self.logger.info(f"Время выхода наступило для сигнала {_signal.pk}")
+                    self.logger.info(f"Exit time reached for signal {_signal.pk}")
                     self.check_and_close_position(_signal.order_id, contract)
                     _signal.status = TradeStatus.CLOSE
                     _signal.save()
-                    self.logger.info(f"Сигнал {_signal.pk} закрыт")
-            self.logger.info("=" * 20 + f" Завершение обработки сигнала {_signal.id} " + "=" * 20)
+                    self.logger.info(f"Signal {_signal.pk} closed")
+            self.logger.info(
+                "=" * 20 + f" Finished processing signal {_signal.id} " + "=" * 20
+            )
         except Exception as e:
-            self.logger.error(f"Ошибка при обработке сигнала: {str(e)}", exc_info=True)
+            self.logger.error(f"Error processing signal: {str(e)}", exc_info=True)
 
     def _get_contract(self, _signal: BotSeasonalSignal) -> ContFuture | None:
         """
@@ -148,30 +150,32 @@ class BotSignalManager:
         Returns:
             ContFuture: Объект контракта
         """
-        self.logger.info(f"Создание контракта для сигнала {_signal.pk}")
-        self.logger.info(f"Символ: {_signal.signal.symbol.financial_instrument}")
-        self.logger.info(f"Биржа: {_signal.signal.symbol.exchange}")
+        self.logger.info(f"Creating contract for signal {_signal.pk}")
+        self.logger.info(f"Symbol: {_signal.signal.symbol.financial_instrument}")
+        self.logger.info(f"Exchange: {_signal.signal.symbol.exchange}")
 
         contract = ContFuture(
             symbol=_signal.signal.symbol.financial_instrument,
             exchange=_signal.signal.symbol.exchange,
-            #currency="USD",
+            # currency="USD",
         )
 
-        # Получаем детали контракта с повторными попытками
+        # Get contract details with retries
         for attempt in range(MAX_RETRIES):
             try:
-                self.logger.info(f"Попытка получения деталей контракта ({attempt + 1}/{MAX_RETRIES})")
+                self.logger.info(
+                    f"Attempting to get contract details ({attempt + 1}/{MAX_RETRIES})"
+                )
                 details = self.ib_connector.reqContractDetails(contract)
                 if details:
                     return details[0]
                 else:
-                    self.logger.warning("Не найдены детали контракта")
+                    self.logger.warning("Contract details not found")
                     if attempt < MAX_RETRIES - 1:
                         time.sleep(RETRY_DELAY)
                     continue
             except Exception as e:
-                self.logger.error(f"Ошибка при получении деталей контракта: {str(e)}")
+                self.logger.error(f"Error getting contract details: {str(e)}")
                 if attempt < MAX_RETRIES - 1:
                     time.sleep(RETRY_DELAY)
                 continue
@@ -188,46 +192,43 @@ class BotSignalManager:
             bool: True если сейчас торговое время, False если нет
         """
         try:
-            # current_time = timezone.localtime()
-            # Получаем торговые часы для текущей даты
             trading_schedule = contract_details.tradingHours
             if not trading_schedule:
-                self.logger.warning("Нет информации о торговых часах")
+                self.logger.warning("No trading hours information available")
                 return False
             trading_schedule = self.parse_data(contract_details)
 
             for day in trading_schedule:
-
                 if day.status == "OPEN":
                     self.logger.info(
-                        f"торговые часы открыты: {day.start} ({day.start.tzname()} UTC{day.start.strftime('%z')}) - "
+                        f"Trading hours open: {day.start} ({day.start.tzname()} UTC{day.start.strftime('%z')}) - "
                         f"{day.end} ({day.end.tzname()} UTC{day.end.strftime('%z')}) "
-                        f"сейчас {self.current_time} ({self.current_time.tzname()} UTC{self.current_time.strftime('%z')})"
+                        f"now {self.current_time} ({self.current_time.tzname()} UTC{self.current_time.strftime('%z')})"
                     )
                     if self.current_time >= day.start and self.current_time <= day.end:
                         self.logger.info(
-                            f"Текущее время в торговых часах! Сессия: {day.start} - {day.end}, текущее время: {self.current_time}"
+                            f"Current time is within trading hours! Session: {day.start} - {day.end}, current time: {self.current_time}"
                         )
                         return True
             return False
 
         except Exception as e:
-            self.logger.error(f"Ошибка при проверке торговых часов: {str(e)}")
+            self.logger.error(f"Error checking trading hours: {str(e)}")
             raise (e)
             return False
-        
-    def parse_data(self,contract_details) -> list:
+
+    def parse_data(self, contract_details) -> list:
         trading_hours = []
         data = contract_details.tradingHours
-        tz = contract_details.timeZoneId    
+        tz = contract_details.timeZoneId
         for entry in data.split(";"):
             if not entry.strip():
                 continue
-                
+
             parts = entry.split(":", 1)
 
             data, status = parts
-            
+
             if status == "CLOSED":
                 trading_hours.append(
                     TradingHours(status="CLOSED", start=None, end=None)
@@ -242,7 +243,7 @@ class BotSignalManager:
                     minute=int(data[11:13]),
                     tzinfo=pytz.timezone(tz),
                 ).astimezone(pytz.UTC)
-                
+
                 end = datetime(
                     year=int(data[14:18]),
                     month=int(data[18:20]),
@@ -251,7 +252,7 @@ class BotSignalManager:
                     minute=int(data[25:27]),
                     tzinfo=pytz.timezone(tz),
                 ).astimezone(pytz.UTC)
-                          
+
                 trading_hours.append(
                     TradingHours(
                         status="OPEN",
@@ -262,98 +263,106 @@ class BotSignalManager:
         return trading_hours
 
     def _open_order(self, signal: BotSeasonalSignal, contract: ContFuture) -> None:
-        """Открывает ордер для сигнала"""
+        """Opens an order for the signal"""
         try:
-            self.logger.info(f"[1] Начало открытия ордера для сигнала {signal.pk}, контракт {contract.symbol}")
-            self.logger.info("[2] Запрос исторических данных...")
+            self.logger.info(
+                f"[1] Starting to open order for signal {signal.pk}, contract {contract.symbol}"
+            )
+            self.logger.info("[2] Requesting historical data...")
 
-            # Получаем исторические данные с повторными попытками
+            # Get historical data with retries
             bars = self.ib_connector.reqHistoricalData(
-                        contract,
-                        endDateTime='',
-                        durationStr='1 D',
-                        barSizeSetting='1 min',
-                        whatToShow='TRADES',
-                        useRTH=True,
-                        timeout=HISTORICAL_DATA_TIMEOUT
-                    )
+                contract,
+                endDateTime="",
+                durationStr="1 D",
+                barSizeSetting="1 min",
+                whatToShow="TRADES",
+                useRTH=True,
+                timeout=HISTORICAL_DATA_TIMEOUT,
+            )
             if not bars:
-                raise Exception("Не удалось получить исторические данные")
+                raise Exception("Failed to get historical data")
 
-            self.logger.info(f"[3] Получены исторические данные: {len(bars)} баров")
+            self.logger.info(f"[3] Received historical data: {len(bars)} bars")
 
             actual_price = float(bars[-1].close)
-            self.logger.info(f"[4] Рассчитана актуальная цена для {contract.symbol}: {actual_price}")
+            self.logger.info(
+                f"[4] Calculated current price for {contract.symbol}: {actual_price}"
+            )
 
             parent_id = self.ib_connector.client.getReqId()
-            self.logger.info(f"[5] Получен ID для родительского ордера: {parent_id}")
+            self.logger.info(f"[5] Got parent order ID: {parent_id}")
 
             entry_action = self.get_entry_direction(signal)
             exit_action = self.get_exit_direction(signal)
-            self.logger.info(f"[6] Определены направления: вход={entry_action}, выход={exit_action}")
+            self.logger.info(
+                f"[6] Determined directions: entry={entry_action}, exit={exit_action}"
+            )
 
-            # Создаем лимитный ордер
-            self.logger.info("[7] Создание лимитного ордера...")
+            # Create limit order
+            self.logger.info("[7] Creating limit order...")
             limit_order = LimitOrder(
                 action=entry_action,
-                totalQuantity=1,  # Временное значение
+                totalQuantity=1,  # Temporary value
                 lmtPrice=actual_price,
                 orderId=parent_id,
             )
             limit_order.tif = "GTC"
             limit_order.transmit = False
-            # Устанавливаем время активации
-            activation_time = (
-                timezone.now() + timedelta(minutes=5)
-                ).strftime('%Y%m%d-%H:%M:%S')
-            self.logger.info(f"Время активации ордера: {repr(activation_time)}")
-            #limit_order.goodAfterTime = activation_time
-            self.logger.info(f"[8] Установлено время активации ордера: {activation_time}")
+            # Set activation time
+            activation_time = (timezone.now() + timedelta(minutes=5)).strftime(
+                "%Y%m%d-%H:%M:%S"
+            )
+            self.logger.info(f"Order activation time: {repr(activation_time)}")
+            # limit_order.goodAfterTime = activation_time
+            self.logger.info(f"[8] Set order activation time: {activation_time}")
 
-            # Расчет стоп-лосса
-            self.logger.info("[9] Расчет стоп-лосса...")
+            # Calculate stop loss
+            self.logger.info("[9] Calculating stop loss...")
             stoploss = self.calculate_stoploss(signal, actual_price)
-            self.logger.info(f"[10] Рассчитана стоп-цена: {stoploss}")
+            self.logger.info(f"[10] Calculated stop price: {stoploss}")
 
-            # Расчет размера позиции
-            self.logger.info("[11] Расчет размера позиции...")
+            # Calculate position size
+            self.logger.info("[11] Calculating position size...")
             balance = float(self.get_balance())
-            self.logger.info(f"[12] Получен баланс счета: {balance}")
+            self.logger.info(f"[12] Got account balance: {balance}")
 
             lots = self.calculate_position_size(
                 balance=balance,
                 entry_price=actual_price,
                 stop_loss=stoploss,
                 multiplier=float(contract.multiplier),
-                risk_percent=signal.signal.risk
+                risk_percent=signal.signal.risk,
             )
-            self.logger.info(f"[13] Рассчитан размер позиции: {lots} контрактов")
+            self.logger.info(f"[13] Calculated position size: {lots} contracts")
 
-            # Обновляем количество в ордере
+            # Update order quantity
             limit_order.totalQuantity = lots
-            self.logger.info("[14] Обновлено количество в лимитном ордере")
+            self.logger.info("[14] Updated limit order quantity")
 
-            # Размещаем лимитный ордер с повторными попытками
+            # Place limit order with retries
             trade = None
             for attempt in range(MAX_RETRIES):
                 try:
-                    self.logger.info(f"[15] Попытка размещения лимитного ордера ({attempt + 1}/{MAX_RETRIES})...")
+                    self.logger.info(
+                        f"[15] Attempting to place limit order ({attempt + 1}/{MAX_RETRIES})..."
+                    )
                     trade = self.ib_connector.placeOrder(contract, limit_order)
                     if trade:
                         break
                 except Exception as e:
-                    self.logger.error(f"Ошибка при размещении лимитного ордера: {str(e)}")
+                    self.logger.error(f"Error placing limit order: {str(e)}")
                     if attempt < MAX_RETRIES - 1:
                         time.sleep(RETRY_DELAY)
                     continue
 
             if not trade:
-                raise Exception("Не удалось разместить лимитный ордер после всех попыток")
+                raise Exception("Failed to place limit order after all attempts")
 
-            self.logger.info(f"[16] Лимитный ордер размещен, ID: {trade.order.orderId}")
+            self.logger.info(f"[16] Limit order placed, ID: {trade.order.orderId}")
 
-            # Создаем и размещаем стоп-ордер с повторными попытками
-            self.logger.info("[17] Создание стоп-ордера...")
+            # Create and place stop order with retries
+            self.logger.info("[17] Creating stop order...")
             stop_order = StopOrder(
                 action=exit_action,
                 totalQuantity=lots,
@@ -362,76 +371,95 @@ class BotSignalManager:
             stop_order.parentId = trade.order.orderId
             stop_order.transmit = True
             stop_order.tif = "GTC"
-            self.logger.info(f"[18] Связываем стоп-ордер с родительским ордером {trade.order.orderId}")
+            self.logger.info(
+                f"[18] Linking stop order to parent order {trade.order.orderId}"
+            )
 
             stop_trade = None
             for attempt in range(MAX_RETRIES):
                 try:
-                    self.logger.info(f"[19] Попытка размещения стоп-ордера ({attempt + 1}/{MAX_RETRIES})...")
+                    self.logger.info(
+                        f"[19] Attempting to place stop order ({attempt + 1}/{MAX_RETRIES})..."
+                    )
                     stop_trade = self.ib_connector.placeOrder(contract, stop_order)
                     if stop_trade:
                         break
                 except Exception as e:
-                    self.logger.error(f"Ошибка при размещении стоп-ордера: {str(e)}")
+                    self.logger.error(f"Error placing stop order: {str(e)}")
                     if attempt < MAX_RETRIES - 1:
                         time.sleep(RETRY_DELAY)
                     continue
 
             if not stop_trade:
-                raise Exception("Не удалось разместить стоп-ордер после всех попыток")
+                raise Exception("Failed to place stop order after all attempts")
 
-            self.logger.info(f"[20] Стоп-ордер размещен, ID: {stop_trade.order.orderId}")
+            self.logger.info(f"[20] Stop order placed, ID: {stop_trade.order.orderId}")
             self.ib_connector.sleep(1)
 
-            # Проверим статус
+            # Check status
             status = stop_trade.orderStatus.status
-            self.logger.info(f"[DEBUG] Статус стоп-ордера: {status}")
+            self.logger.info(f"[DEBUG] Stop order status: {status}")
 
-            # Проверим логи ордера
+            # Check order logs
             if stop_trade.log:
                 for log in stop_trade.log:
-                    self.logger.info(f"[DEBUG] Стоп-ордер лог: {log.message}")
+                    self.logger.info(f"[DEBUG] Stop order log: {log.message}")
+
             if trade.order.permId == 0:
-                # Если permId все еще 0, ждем обновления
+                # If permId is still 0, wait for update
                 counter = 0
                 while trade.order.permId == 0 and counter < 5:
-                    self.logger.info(f"Ждем получения permId для ордера {trade.order.orderId}...")
-                    self.ib_connector.sleep(1)  # Еще подождем
+                    self.logger.info(
+                        f"Waiting for permId for order {trade.order.orderId}..."
+                    )
+                    self.ib_connector.sleep(1)  # Wait more
                     counter += 1
             if trade.order.permId == 0:
-                self.logger.warning(f"Не удалось получить permId для ордера {trade.order.orderId}")
+                self.logger.warning(
+                    f"Failed to get permId for order {trade.order.orderId}"
+                )
             else:
-                logger.info(f"Ордер размещен. orderId: {trade.order.orderId}, permId: {trade.order.permId}")
-    
-            # Сохраняем ID ордера в сигнале
+                logger.info(
+                    f"Order placed. orderId: {trade.order.orderId}, permId: {trade.order.permId}"
+                )
+
+            # Save order ID in signal
             signal.order_id = trade.order.orderId
             signal.save()
-            self.logger.info(f"[21] Сохранен perm ID ордера {trade.order} в сигнале {signal.pk}")
+            self.logger.info(
+                f"[21] Saved order perm ID {trade.order} in signal {signal.pk}"
+            )
             self.logger.info(
                 f"[DEBUG] StopOrder -> action={stop_order.action}, "
                 f"qty={stop_order.totalQuantity}, stopPrice={stop_order.auxPrice}, "
                 f"parentId={stop_order.parentId}, transmit={stop_order.transmit}"
-)
-            self.logger.info(f"""[22] ИТОГ размещения ордеров:
-            Символ: {contract.symbol}
-            Направление: {entry_action}
-            Цена входа: {actual_price}
-            Стоп-лосс: {stoploss}
-            Количество: {lots}
-            ID лимитного ордера: {trade.order.orderId}
-            ID стоп-ордера: {stop_trade.order.orderId}
-            Время активации: {activation_time}
-            """)
+            )
+            self.logger.info(
+                f"""[22] ORDER PLACEMENT SUMMARY:
+            Symbol: {contract.symbol}
+            Direction: {entry_action}
+            Entry price: {actual_price}
+            Stop loss: {stoploss}
+            Quantity: {lots}
+            Limit order ID: {trade.order.orderId}
+            Stop order ID: {stop_trade.order.orderId}
+            Activation time: {activation_time}
+            """
+            )
 
         except Exception as e:
-            self.logger.error(f"[ERROR] Ошибка при открытии ордера: {str(e)}", exc_info=True)
+            self.logger.error(f"[ERROR] Error opening order: {str(e)}", exc_info=True)
             raise
 
     def get_balance(self) -> float:
         account_summary = self.ib_connector.accountSummary()
-        net_liquidation_values = [val for val in account_summary if val.tag == 'NetLiquidation']
+        net_liquidation_values = [
+            val for val in account_summary if val.tag == "NetLiquidation"
+        ]
         for value in net_liquidation_values:
-            print(f"Account: {value.account}, NetLiquidation: {value.value} {value.currency}")
+            print(
+                f"Account: {value.account}, NetLiquidation: {value.value} {value.currency}"
+            )
             return value.value
 
     def get_entry_direction(self, signal: BotSeasonalSignal) -> str:
@@ -445,196 +473,215 @@ class BotSignalManager:
         stoploss_value = float(signal.signal.stoploss)
         if signal.signal.stoploss_type == "POINTS":
             stop_price = round(
-                actual_price - stoploss_value if is_long
-                else actual_price + stoploss_value, 2
+                (
+                    actual_price - stoploss_value
+                    if is_long
+                    else actual_price + stoploss_value
+                ),
+                2,
             )
         else:
             stop_price = round(
-                actual_price * (1 - stoploss_value / 100) if is_long
-                else actual_price * (1 + stoploss_value / 100), 2
+                (
+                    actual_price * (1 - stoploss_value / 100)
+                    if is_long
+                    else actual_price * (1 + stoploss_value / 100)
+                ),
+                2,
             )
         return stop_price
 
-    def calculate_position_size(self, balance, entry_price, stop_loss, multiplier: int | float = 1, risk_percent=2):
+    def calculate_position_size(
+        self,
+        balance,
+        entry_price,
+        stop_loss,
+        multiplier: int | float = 1,
+        risk_percent=2,
+    ):
         """
         Рассчитывает размер позиции на основе риска
-        
+
         Args:
             balance (float): Баланс счета
             entry_price (float): Цена входа
             stop_loss (float): Цена стоп-лосса
             multiplier (float): Множитель контракта
             risk_percent (float): Процент риска от баланса
-            
+
         Returns:
             int: Количество контрактов
         """
         try:
-            # Преобразуем все значения к float
             balance = float(balance)
             entry_price = float(entry_price)
             stop_loss = float(stop_loss)
             multiplier = float(multiplier)
             risk_percent = float(risk_percent)
 
-            self.logger.info(f"Расчет размера позиции:")
-            self.logger.info(f"Баланс: {balance}")
-            self.logger.info(f"Цена входа: {entry_price}")
-            self.logger.info(f"Стоп-лосс: {stop_loss}")
-            self.logger.info(f"Множитель: {multiplier}")
-            self.logger.info(f"Процент риска: {risk_percent}%")
+            self.logger.info("Calculating position size:")
+            self.logger.info(f"Balance: {balance}")
+            self.logger.info(f"Entry price: {entry_price}")
+            self.logger.info(f"Stop loss: {stop_loss}")
+            self.logger.info(f"Multiplier: {multiplier}")
+            self.logger.info(f"Risk percent: {risk_percent}%")
 
-            risk_amount = balance * (risk_percent / 100)  # Сколько денег рискуем
-            risk_per_unit = abs(entry_price - stop_loss) * multiplier  # Убыток на 1 контракт
+            risk_amount = balance * (risk_percent / 100)  # Amount of money to risk
+            risk_per_unit = (
+                abs(entry_price - stop_loss) * multiplier
+            )  # Loss per contract
 
-            self.logger.info(f"Сумма риска: {risk_amount}")
-            self.logger.info(f"Риск на 1 контракт: {risk_per_unit}")
+            self.logger.info(f"Risk amount: {risk_amount}")
+            self.logger.info(f"Risk per contract: {risk_per_unit}")
 
             if risk_per_unit == 0:
-                self.logger.warning("Риск на контракт равен 0, возвращаем 1 контракт")
+                self.logger.warning("Risk per contract is 0, returning 1 contract")
                 return 1
 
-            quantity = risk_amount / risk_per_unit  # Количество контрактов
-            result = max(1, int(quantity))  # Минимум 1 контракт
+            quantity = risk_amount / risk_per_unit  # Number of contracts
+            result = max(1, int(quantity))  # Minimum 1 contract
 
-            self.logger.info(f"Рассчитанное количество контрактов: {result}")
+            self.logger.info(f"Calculated number of contracts: {result}")
             return result
 
         except Exception as e:
-            self.logger.error(f"Ошибка при расчете размера позиции: {str(e)}")
-            self.logger.info("Возвращаем минимальный размер позиции: 1")
+            self.logger.error(f"Error calculating position size: {str(e)}")
+            self.logger.info("Returning minimum position size: 1")
             return 1
 
     def check_and_close_position(self, order_id: int, contract: ContFuture) -> bool:
         """
         Проверяет и закрывает позицию если необходимо
-        
+
         Args:
             order_id: ID ордера (используется только для логов)
             contract: Объект контракта
-            
+
         Returns:
             bool: True если позиция успешно закрыта, False в противном случае
         """
         try:
             self.logger.info("=" * 40)
             self.logger.info(
-                f"=== Начало проверки позиции по {contract.contract.symbol} ==="
+                f"=== Starting position check for {contract.contract.symbol} ==="
             )
-            
-            # 1. Проверка наличия позиции
-            self.logger.info("Проверка наличия открытой позиции...")
+
+            # 1. Check for open position
+            self.logger.info("Checking for open position...")
             positions = self.ib_connector.positions()
-            
-            # Логируем все позиции для отладки
-            self.logger.info(f"Получено {len(positions)} позиций:")
+
+            # Log all positions for debugging
+            self.logger.info(f"Retrieved {len(positions)} positions:")
             for i, pos in enumerate(positions):
                 self.logger.info(
                     f"  #{i+1}: symbol={pos.contract.symbol}, "
                     f"position={pos.position}, "
                     f"avgCost={pos.avgCost}"
                 )
-            
+
             position = next(
                 (p for p in positions if p.contract.symbol == contract.contract.symbol),
-                None
+                None,
             )
-            
+
             if not position:
                 self.logger.warning(
-                    f"Позиция по {contract.contract.symbol} не найдена в списке позиций."
+                    f"Position for {contract.contract.symbol} not found in positions list."
                 )
                 return False
-                
+
             if position.position == 0:
-                self.logger.info(f"Позиция по {contract.contract.symbol} имеет нулевой объем.")
+                self.logger.info(
+                    f"Position for {contract.contract.symbol} has zero volume."
+                )
                 return False
-                
+
             self.logger.info(
-                f"Найдена позиция по {contract.contract.symbol}: "
-                f"объем={position.position}, средняя цена={position.avgCost}"
+                f"Found position for {contract.contract.symbol}: "
+                f"volume={position.position}, average price={position.avgCost}"
             )
-            
-            # 2. Проверка наличия активных стоп-ордеров
-            self.logger.info("Проверка наличия активных стоп-ордеров...")
+
+            # 2. Check for active stop orders
+            self.logger.info("Checking for active stop orders...")
             open_orders = self.ib_connector.openOrders()
-            
-            # Логируем все открытые ордера
-            self.logger.info(f"Получено {len(open_orders)} открытых ордеров:")
-            for i, order in enumerate(open_orders[:5]):  # Выводим первые 5 для краткости
+
+            # Log all open orders
+            self.logger.info(f"Retrieved {len(open_orders)} open orders:")
+            for i, order in enumerate(open_orders[:5]):  # Show first 5 for brevity
                 self.logger.info(
                     f"  #{i+1}: orderId={order.orderId}, "
                     f"action={order.action}, "
                     f"orderType={order.orderType}, "
                     f"totalQuantity={order.totalQuantity}"
                 )
-            
 
-            
-            # 3. Закрытие позиции
+            # 3. Close position
             self.logger.info(
-                f"Подготовка к закрытию позиции по {contract.contract.symbol}"
+                f"Preparing to close position for {contract.contract.symbol}"
             )
-            action = 'SELL' if position.position > 0 else 'BUY'
+            action = "SELL" if position.position > 0 else "BUY"
             quantity = abs(position.position)
-            
+
             self.logger.info(
-                f"Создание ордера: {action} {quantity} {contract.contract.symbol}"
+                f"Creating order: {action} {quantity} {contract.contract.symbol}"
             )
-            
+
             close_order = MarketOrder(action, quantity)
-            close_order.orderId = self.ib_connector.client.getReqId()  # Генерируем новый ID
-            self.logger.info(f"Назначен новый ID ордера: {close_order.orderId}")
-            
+            close_order.orderId = self.ib_connector.client.getReqId()  # Generate new ID
+            self.logger.info(f"Assigned new order ID: {close_order.orderId}")
+
             trade = self.ib_connector.placeOrder(contract.contract, close_order)
-            
+
             if not trade:
                 self.logger.error(
-                    f"Не удалось разместить ордер на закрытие {contract.contract.symbol}."
+                    f"Failed to place closing order for {contract.contract.symbol}."
                 )
                 return False
-                
+
             self.logger.info(
-                f"Ордер на закрытие размещен: orderId={trade.order.orderId}, "
+                f"Closing order placed: orderId={trade.order.orderId}, "
                 f"status={trade.orderStatus.status}, "
                 f"{action} {quantity} {contract.contract.symbol}"
             )
-            
-            # 4. Проверка статуса закрытия
-            wait_time = 5  # Увеличиваем время ожидания для заполнения ордера
-            self.logger.info(f"Ожидание исполнения ордера закрытия ({wait_time} сек)...")
+
+            # 4. Check closing status
+            wait_time = 5  # Increase wait time for order fill
+            self.logger.info(
+                f"Waiting for closing order execution ({wait_time} sec)..."
+            )
             self.ib_connector.sleep(wait_time)
-            
-            # Проверяем, была ли закрыта позиция
+
+            # Check if position was closed
             positions = self.ib_connector.positions()
             position = next(
                 (p for p in positions if p.contract.symbol == contract.contract.symbol),
-                None
+                None,
             )
-            
+
             if not position or position.position == 0:
                 self.logger.info(
-                    f"Позиция по {contract.contract.symbol} успешно закрыта"
+                    f"Position for {contract.contract.symbol} successfully closed"
                 )
                 return True
             else:
                 self.logger.warning(
-                    f"Не удалось полностью закрыть позицию по {contract.contract.symbol}, "
-                    f"оставшийся объем: {position.position}"
+                    f"Failed to fully close position for {contract.contract.symbol}, "
+                    f"remaining volume: {position.position}"
                 )
                 return False
-                
+
         except Exception as e:
             self.logger.error(
-                f"Ошибка при закрытии позиции {contract.contract.symbol}: {str(e)}",
-                exc_info=True
+                f"Error closing position {contract.contract.symbol}: {str(e)}",
+                exc_info=True,
             )
-            # Логируем дополнительную информацию об ошибке
+            # Log additional error information
             import traceback
-            self.logger.error(f"Детали ошибки: {traceback.format_exc()}")
+
+            self.logger.error(f"Error details: {traceback.format_exc()}")
             return False
         finally:
             self.logger.info(
-                f"=== Завершение проверки позиции по {contract.contract.symbol} ==="
+                f"=== Finished position check for {contract.contract.symbol} ==="
             )
             self.logger.info("=" * 40)

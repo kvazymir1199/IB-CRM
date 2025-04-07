@@ -1,5 +1,5 @@
 """
-Модуль для обработки торговых сигналов
+Module for processing trading signals
 """
 
 import logging
@@ -16,89 +16,89 @@ logger = logging.getLogger(__name__)
 
 class SignalManager:
     """
-    Класс для обработки торговых сигналов
+    Class for processing trading signals
     """
 
     def __init__(self):
-        # Получаем локальную временную зону из настроек Django
+        # Get local timezone from Django settings
         self.local_tz = ZoneInfo(TIME_ZONE) 
-        # Логируем информацию о часовом поясе при инициализации
+        # Log timezone information during initialization
+
     def check_signals(self):
         """
-        Проверка всех сигналов, создание новых и обновление существующих
+        Check all signals, create new ones and update existing
         BotSeasonalSignal.
 
         Returns:
-            tuple: (int, int) - (количество созданных сигналов,
-                                количество обновленных)
+            tuple: (int, int) - (number of created signals,
+                                number of updated)
         """
         created_count = 0
         updated_count = 0
         current_year = timezone.now().year
         current_time = timezone.now()
-        logger.info("=" * 20 + f"Начало проверки сигналов. Текущее время:{current_time} " + "=" * 20)
+        logger.info("=" * 20 + f"Starting signal check. Current time: {current_time} " + "=" * 20)
 
-        # Получаем все сезонные сигналы
+        # Get all seasonal signals
         seasonal_signals = SeasonalSignal.objects.all()
-        logger.info(f"Найдено сезонных сигналов: {seasonal_signals.count()}")
+        logger.info(f"Found seasonal signals: {seasonal_signals.count()}")
 
         for signal in seasonal_signals:
             try:
                 logger.info("-"*20)
                 logger.info(
-                    f"Обработка сигнала: {signal} " f"(Magic: {signal.magic_number})"
+                    f"Processing signal: {signal} " f"(Magic: {signal.magic_number})"
                 )
 
-                # Проверяем существующие сигналы
+                # Check existing signals
                 existing_signals = BotSeasonalSignal.objects.filter(
                     signal=signal, entry_date__gt=current_time
                 )
 
                 if existing_signals.exists():
-                    # Обновляем существующие сигналы
+                    # Update existing signals
                     updated = self.update_bot_signals(signal)
                     updated_count += updated
-                    logger.info(f"Обновлено {updated} сигналов для {signal}")
+                    logger.info(f"Updated {updated} signals for {signal}")
                 else:
-                    # Создаем новый сигнал
+                    # Create new signal
                     if self._process_signal(signal, current_year):
                         created_count += 1
                 logger.info("-"*20)
             except Exception as e:
-                logger.error(f"Ошибка обработки сигнала {signal}: {e}")
+                logger.error(f"Error processing signal {signal}: {e}")
 
         logger.info(
-            f"Проверка сигналов завершена. "
-            f"Создано: {created_count}, Обновлено: {updated_count}"
+            f"Signal check completed. "
+            f"Created: {created_count}, Updated: {updated_count}"
         )
-        logger.info("=" * 20 + " Завершение обработки сигналов" + "=" * 20)
+        logger.info("=" * 20 + " Finished processing signals" + "=" * 20)
         return created_count, updated_count
 
     def update_bot_signals(self, seasonal_signal: SeasonalSignal) -> int:
         """
-        Обновляет все связанные BotSeasonalSignal при изменении
-        SeasonalSignal.
+        Updates all related BotSeasonalSignal when SeasonalSignal changes.
 
         Args:
-            seasonal_signal: Измененный сезонный сигнал
+            seasonal_signal: Modified seasonal signal
 
         Returns:
-            int: Количество обновленных сигналов
+            int: Number of updated signals
         """
         updated_count = 0
         current_time = timezone.now()
 
-        logger.info(f"Начало обновления BotSeasonalSignal для {seasonal_signal}")
+        logger.info(f"Starting BotSeasonalSignal update for {seasonal_signal}")
 
-        # Получаем все связанные BotSeasonalSignal
+        # Get all related BotSeasonalSignal
         bot_signals = BotSeasonalSignal.objects.filter(
             signal=seasonal_signal,
-            entry_date__gt=current_time,  # Только будущие сигналы
+            entry_date__gt=current_time,  # Only future signals
         )
 
         for bot_signal in bot_signals:
             try:
-                # Создаем новые даты в фиксированном часовом поясе UTC+1
+                # Create new dates in fixed timezone UTC+1
                 entry_date = datetime(
                     year=bot_signal.entry_date.year,
                     month=seasonal_signal.entry_month,
@@ -117,7 +117,7 @@ class SignalManager:
                     tzinfo=self.local_tz
                 )
 
-                # Проверяем, нужно ли перенести дату выхода на следующий год
+                # Check if exit date needs to be moved to next year
                 if exit_date < entry_date:
                     exit_date = datetime(
                         year=bot_signal.exit_date.year + 1,
@@ -128,7 +128,7 @@ class SignalManager:
                         tzinfo=self.local_tz
                     )
 
-                # Обновляем даты только если они изменились
+                # Update dates only if they changed
                 if (
                     bot_signal.entry_date != entry_date
                     or bot_signal.exit_date != exit_date
@@ -137,48 +137,48 @@ class SignalManager:
                     bot_signal.exit_date = exit_date
                     bot_signal.save()
 
-                    logger.info(f"Обновлен BotSeasonalSignal {bot_signal}:")
-                    logger.info(f"Новая дата входа (UTC+1): {entry_date}")
-                    logger.info(f"Новая дата выхода (UTC+1): {exit_date}")
+                    logger.info(f"Updated BotSeasonalSignal {bot_signal}:")
+                    logger.info(f"New entry date (UTC+1): {entry_date}")
+                    logger.info(f"New exit date (UTC+1): {exit_date}")
                     updated_count += 1
 
             except Exception as e:
-                logger.error(f"Ошибка обновления BotSeasonalSignal {bot_signal}: {e}")
+                logger.error(f"Error updating BotSeasonalSignal {bot_signal}: {e}")
 
         logger.info(
-            f"Обновление BotSeasonalSignal завершено. "
-            f"Обновлено сигналов: {updated_count}"
+            f"BotSeasonalSignal update completed. "
+            f"Updated signals: {updated_count}"
         )
         return updated_count
 
     def _process_signal(self, signal: SeasonalSignal, current_year: int) -> bool:
         """
-        Обработка отдельного сигнала
+        Process individual signal
 
         Args:
-            signal: Сезонный сигнал для обработки
-            current_year: Текущий год
+            signal: Seasonal signal to process
+            current_year: Current year
 
         Returns:
-            bool: True если был создан новый сигнал, False в противном случае
+            bool: True if new signal was created, False otherwise
         """
-        # Проверяем существование BotSeasonalSignal для текущего года и magic_number
+        # Check if BotSeasonalSignal exists for current year and magic_number
         existing_bot_signal = BotSeasonalSignal.objects.filter(
             signal=signal,
-            signal__magic_number=signal.magic_number,  # Добавляем фильтр по magic_number
+            signal__magic_number=signal.magic_number,  # Add filter by magic_number
             created_at__year=current_year,
         ).exists()
 
         if existing_bot_signal:
             logger.info(
-                f"Сигнал {signal} (Magic: {signal.magic_number}) уже существует для года {current_year}"
+                f"Signal {signal} (Magic: {signal.magic_number}) already exists for year {current_year}"
             )
             return False
 
-        # Получаем текущее время (UTC)
+        # Get current time (UTC)
         current_time = datetime.now(self.local_tz)
         
-        # Создаем дату входа в фиксированном часовом поясе UTC+1
+        # Create entry date in fixed timezone UTC+1
         entry_date = datetime(
             year=current_year,
             month=signal.entry_month,
@@ -188,24 +188,22 @@ class SignalManager:
             tzinfo=self.local_tz
         )
 
-        # Преобразуем время в UTC для правильного сравнения
-        logger.info(f"Вход (UTC): {entry_date} | Текущее время: {current_time}")
-        # Сравниваем даты в одинаковом часовом поясе (UTC)
+        # Convert time to UTC for proper comparison
+        logger.info(f"Entry (UTC): {entry_date} | Current time: {current_time}")
+        # Compare dates in same timezone (UTC)
         if entry_date > current_time:
             self._create_bot_signal(signal, current_year)
             return True
-        
 
     def _create_bot_signal(self, signal: SeasonalSignal, current_year: int):
         """
-        Создание торгового сигнала
+        Create trading signal
 
         Args:
-            signal: Сезонный сигнал, на основе которого создается
-                   BotSeasonalSignal
-            current_year: Текущий год
+            signal: Seasonal signal on which BotSeasonalSignal is based
+            current_year: Current year
         """
-        # Создаем даты входа и выхода в фиксированном часовом поясе UTC+1
+        # Create entry and exit dates in fixed timezone UTC+1
         entry_date = datetime(
             year=current_year,
             month=signal.entry_month,
@@ -224,7 +222,7 @@ class SignalManager:
             tzinfo=self.local_tz
         )
 
-        # Если дата выхода меньше даты входа, значит выход в следующем году
+        # If exit date is less than entry date, exit is in next year
         if exit_date < entry_date:
             exit_date = datetime(
                 year=current_year + 1,
@@ -234,47 +232,47 @@ class SignalManager:
                 minute=signal.close_time.minute,
                 tzinfo=self.local_tz
             )  
-            logger.info(f"Дата выхода перенесена на следующий год: {exit_date}")
+            logger.info(f"Exit date moved to next year: {exit_date}")
 
         bot_signal = BotSeasonalSignal.objects.create(
             signal=signal, entry_date=entry_date, exit_date=exit_date
         )
         logger.info("-"*20)
-        logger.info(f"Создан торговый сигнал {bot_signal}:")
-        logger.info(f"Вход (UTC+1): {entry_date}")
-        logger.info(f"Выход (UTC+1): {exit_date}")
+        logger.info(f"Created trading signal {bot_signal}:")
+        logger.info(f"Entry (UTC+1): {entry_date}")
+        logger.info(f"Exit (UTC+1): {exit_date}")
         logger.info(f"Magic: {signal.magic_number}")
         logger.info("-"*20)
 
     def create_date_with_fixed_timezone(self, year, month, day, hour, minute, 
                                         fixed_timezone='Etc/GMT-1'):
         """
-        Создает дату с указанием часового пояса UTC+1 (без учета DST)
+        Creates date with specified timezone UTC+1 (without DST)
         
         Args:
-            year: Год
-            month: Месяц
-            day: День
-            hour: Час
-            minute: Минута
-            fixed_timezone: Фиксированный часовой пояс (по умолчанию UTC+1)
+            year: Year
+            month: Month
+            day: Day
+            hour: Hour
+            minute: Minute
+            fixed_timezone: Fixed timezone (default UTC+1)
             
         Returns:
-            datetime: Дата в указанном часовом поясе
+            datetime: Date in specified timezone
         """
-        # Создаем дату в указанном часовом поясе (UTC+1)
+        # Create date in specified timezone (UTC+1)
         fixed_tz = pytz.timezone(fixed_timezone)
         date_in_fixed_tz = fixed_tz.localize(
             timezone.datetime(year, month, day, hour, minute)
         )
         
         logger.info(
-            f"Создана дата в фиксированном часовом поясе {fixed_timezone}: "
+            f"Created date in fixed timezone {fixed_timezone}: "
             f"{date_in_fixed_tz}"
         )
         
         return date_in_fixed_tz
 
 
-# Создаем глобальный экземпляр менеджера
+# Create global manager instance
 signal_manager = SignalManager()

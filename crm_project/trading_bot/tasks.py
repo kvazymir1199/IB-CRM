@@ -12,18 +12,18 @@ logger = logging.getLogger('trading_bot')
 @shared_task(queue='signals_queue')
 def check_signals():
     """
-    Задача для проверки и создания сигналов
+    Task for checking and creating signals
     """
-    logger.info("Запуск задачи check_signals")
+    logger.info("Starting check_signals task")
     try:
-        # Проверяем готовность приложений Django
+        # Check if Django apps are ready
         apps.check_apps_ready()
         # Импортируем signal_manager только когда задача выполняется
         from trading_bot.signal_manager import signal_manager
     
         return signal_manager.check_signals()
     except AppRegistryNotReady:
-        logger.warning("Приложения Django не готовы, повторная попытка через 5 секунд")
+        logger.warning("Django apps are not ready, retrying in 5 seconds")
         # Если приложения не готовы, пробуем снова через 5 секунд
         check_signals.apply_async(countdown=5)
         return "Waiting for Django apps to be ready..."
@@ -31,10 +31,10 @@ def check_signals():
 
 @shared_task(queue='bot_queue', unique_on=['manage_bot'])
 def manage_bot():
-    """Задача для управления торговым ботом"""
-    logger.info("Запуск задачи manage_bot")
+    """Task for managing the trading bot"""
+    logger.info("Starting manage_bot task")
     try:
-        # Проверяем готовность приложений Django
+        # Check if Django apps are ready
         apps.check_apps_ready()
         
         # Проверяем состояние бота
@@ -42,16 +42,16 @@ def manage_bot():
         bot_state = BotState.get_state()
         
         if not bot_state.is_running:
-            logger.info("Бот остановлен, пропускаем выполнение")
+            logger.info("Bot is stopped, skipping execution")
             return "Bot is stopped"
             
         from trading_bot.bot import bot
-        logger.info("Бот запущен")
+        logger.info("Bot is running")
         return bot.run()
     except AppRegistryNotReady:
-        logger.warning("Приложения Django не готовы, повторная попытка через 5 секунд")
+        logger.warning("Django apps are not ready, retrying in 5 seconds")
         manage_bot.apply_async(countdown=5)
         return "Waiting for Django apps to be ready..."
     except Exception as e:
-        logger.error(f"Ошибка в задаче manage_bot: {str(e)}", exc_info=True)
+        logger.error(f"Error in manage_bot task: {str(e)}", exc_info=True)
         raise e

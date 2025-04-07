@@ -1,5 +1,5 @@
 """
-Модуль для работы с Interactive Brokers Gateway
+Module for working with Interactive Brokers Gateway
 """
 
 import logging
@@ -12,20 +12,20 @@ from ib_insync import IB, util
 from trading_bot.bot_signal_manager import BotSignalManager
 from django.conf import settings
 
-# Настраиваем Django
+# Configure Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "crm_project.settings")
 django.setup()
 
-# Настраиваем логирование
+# Configure logging
 logger = logging.getLogger("bot")
 
-# Отключаем логи ib_insync ниже уровня WARNING
+# Disable ib_insync logs below WARNING level
 util.logToConsole(level=logging.WARNING)
 
 
 class TradingBot:
     """
-    Класс для работы с Interactive Brokers Gateway
+    Class for working with Interactive Brokers Gateway
     """
 
     def __init__(
@@ -37,16 +37,16 @@ class TradingBot:
         retry_delay: int = 2,
     ):
         """
-        Инициализация подключения к IB Gateway
+        Initialize connection to IB Gateway
 
         Args:
-            host: Хост IB Gateway
-            port: Порт IB Gateway
-            client_id: ID клиента
-            max_retries: Максимальное количество попыток подключения
-            retry_delay: Задержка между попытками в секундах
+            host: IB Gateway host
+            port: IB Gateway port
+            client_id: Client ID
+            max_retries: Maximum number of connection attempts
+            retry_delay: Delay between attempts in seconds
         """
-        logger.info("Инициализация бота...")
+        logger.info("Initializing bot...")
         sys.stdout.flush()
 
         self.ib = IB()
@@ -60,7 +60,7 @@ class TradingBot:
 
     def connect(self) -> bool:
         """
-        Подключение к IB Gateway
+        Connect to IB Gateway
         """
         if self.connected:
             return True
@@ -68,56 +68,56 @@ class TradingBot:
         for attempt in range(self.max_retries):
             try:
                 logger.info(
-                    f"Попытка подключения к IB Gateway ({attempt + 1}/{self.max_retries})"
+                    f"Attempting to connect to IB Gateway ({attempt + 1}/{self.max_retries})"
                 )
                 self.ib.connect(self.host, self.port, clientId=self.client_id)
                 self.connected = True
-                logger.info("Успешное подключение к IB Gateway")
+                logger.info("Successfully connected to IB Gateway")
                 return True
             except Exception as e:
-                logger.error(f"Ошибка подключения к IB Gateway: {str(e)}")
+                logger.error(f"Error connecting to IB Gateway: {str(e)}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                 else:
                     logger.error(
-                        "Не удалось подключиться к IB Gateway после всех попыток"
+                        "Failed to connect to IB Gateway after all attempts"
                     )
                     return False
 
     def disconnect(self) -> None:
         """
-        Отключение от IB Gateway
+        Disconnect from IB Gateway
         """
         if self.connected:
             try:
                 self.ib.disconnect()
                 self.connected = False
-                logger.info("Отключено от IB Gateway")
+                logger.info("Disconnected from IB Gateway")
             except Exception as e:
-                logger.error(f"Ошибка при отключении от IB Gateway: {str(e)}")
+                logger.error(f"Error disconnecting from IB Gateway: {str(e)}")
 
     def run(self) -> None:
         """
-        Запуск бота
+        Run the bot
         """
         try:
             if not self.connect():
                 return
 
-            logger.info("Инициализация менеджера сигналов...")
+            logger.info("Initializing signal manager...")
             self.signal_manager = BotSignalManager(self.ib)
-            logger.info("Менеджер сигналов успешно инициализирован")
+            logger.info("Signal manager successfully initialized")
 
-            logger.info("Бот запущен и ожидает сигналов...")
+            logger.info("Bot is running and waiting for signals...")
 
             self.signal_manager.manage_signals()
             self.disconnect()
 
         except Exception as e:
-            logger.error(f"Критическая ошибка в боте: {str(e)}")
+            logger.error(f"Critical error in bot: {str(e)}")
         finally:
             self.disconnect()
 
 
-# Создаем глобальный экземпляр бота
+# Create global bot instance
 bot = TradingBot()
