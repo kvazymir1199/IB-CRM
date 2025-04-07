@@ -118,10 +118,10 @@ class BotSignalManager:
                     return
 
                 self.logger.info("Открытие ордера...")
-                # if not self._is_trading_time(contract):
-                #     self.logger.info(f"Рынок закрыт: {self.current_time}")
-                #     self.logger.info(f"Время входа не наступило для сигнала {_signal.pk}")
-                #     return
+                if not self._is_trading_time(contract):
+                    self.logger.info(f"Рынок закрыт: {self.current_time}")
+                    self.logger.info(f"Время входа не наступило для сигнала {_signal.pk}")
+                    return
                 try:
                     self._open_order(_signal, contract.contract)
                 except Exception as e:
