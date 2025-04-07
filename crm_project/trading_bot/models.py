@@ -46,7 +46,13 @@ class BotSeasonalSignal(models.Model):
         verbose_name='Order ID',
         help_text='Order ID in Interactive Brokers'
     )
-
+    stop_order_id = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Stop order ID',
+        help_text='Stop order ID in Interactive Brokers'
+    )
+    
     class Meta:
         verbose_name = 'Trading signal'
         verbose_name_plural = 'Trading signals'

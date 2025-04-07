@@ -6,7 +6,7 @@ ib = IB()
 ib.connect('127.0.0.1', 4002, clientId=124)
 
 # Определяем контракт на ближайший фьючерс
-contracts = ib.reqContractDetails(ContFuture('ZL',"CBOT" ))
+contracts = ib.reqContractDetails(ContFuture('SI',"COMEX" ))
 if not contracts:
     raise Exception("❌ Контракт не найден!")
 print(f"контракт найден: {contracts[0].contract}")
@@ -20,8 +20,9 @@ bars = ib.reqHistoricalData(
     useRTH=True,
     timeout=10
 )
-# Рассчитываем время активации ордера (через 3 минуты)
-activation_time = (datetime.now() + timedelta(seconds=15)).strftime('%Y%m%d %H:%M:%S')
+print(bars)
+# # Рассчитываем время активации ордера (через 3 минуты)
+# activation_time = (datetime.now() + timedelta(seconds=15)).strftime('%Y%m%d %H:%M:%S')
 
 # Создаём рыночный ордер с отложенным временем активации
 # limit_order = LimitOrder('BUY', 1,lmtPrice=bars[-1].close)
@@ -53,3 +54,51 @@ activation_time = (datetime.now() + timedelta(seconds=15)).strftime('%Y%m%d %H:%
 
 
 # print(f"✅ Стоп-лосс установлен на {stop_loss_price}")
+
+
+from ib_insync import *
+import time
+
+# Подключение к IB Gateway / TWS
+ib = IB()
+ib.connect('127.0.0.1', 4002, clientId=121)
+
+# Создание контракта: Micro E-mini S&P 500 futures (MES)
+contract = ContFuture(symbol='MES', exchange='CME', currency='USD')  # укажи актуальный expiry
+ib.qualifyContracts(contract)[0]
+
+# Настройки ордера
+parent_order_id = ib.client.getReqId()
+
+# 1. Родительский лимитный ордер
+parent = MarketOrder(
+    action='BUY',
+    totalQuantity=1,
+    lmtPrice=5800,
+    orderId=parent_order_id,
+    transmit=False
+)
+
+# 2. Стоп-лосс ордер (дочерний)
+stop = StopOrder(
+    action='SELL',
+    totalQuantity=1,
+    stopPrice=5500,
+    parentId=parent_order_id,
+    transmit=True
+)
+
+# Отправка ордеров
+trade_parent = ib.placeOrder(contract, parent)
+trade_stop = ib.placeOrder(contract, stop)
+
+# Ожидание появления permanent ID (permId)
+print("⏳ Ожидаем подтверждения ордеров...")
+while not trade_parent.order.permId or not trade_stop.order.permId:
+    ib.sleep(1)
+    ib.reqOpenOrders()
+
+print(f"✅ Лимитный ордер размещён: permId={trade_parent.order.permId}")
+print(f"✅ Стоп-ордер размещён: permId={trade_stop.order.permId}")
+
+ib.disconnect()

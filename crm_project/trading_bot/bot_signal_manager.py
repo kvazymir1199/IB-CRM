@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     pass
 
 # Create logger for module
-logger = logging.getLogger("trading_bot.core.bot_signal_manager")
+logger = logging.getLogger('trading_bot.core.bot_signal_manager')
 
 # Disable ib_insync logs below WARNING level
 util.logToConsole(level=logging.WARNING)
@@ -41,6 +41,7 @@ class TradingHours:
     end: datetime
 
 
+
 class BotSignalManager:
     """
     Класс для управления сигналами торгового бота
@@ -55,7 +56,7 @@ class BotSignalManager:
         Получение текущего времени от IB Gateway
         """
         current_time = self.ib_connector.reqCurrentTime()
-
+        
         return current_time.astimezone(ZoneInfo(TIME_ZONE))
 
     def manage_signals(self) -> None:
@@ -96,24 +97,20 @@ class BotSignalManager:
             entry_time = timezone.localtime(_signal.entry_date)
             exit_time = timezone.localtime(_signal.exit_date)
             contract = self._get_contract(_signal)
-
+            
             if not _signal.order_id:
                 self.logger.info(f"Signal {_signal.pk} has no open order")
 
                 if self.current_time < entry_time:
                     self.logger.info(f"Entry time not reached for signal {_signal.pk}")
-                    self.logger.info(
-                        f"Current time: {self.current_time} entry time: {entry_time}"
-                    )
+                    self.logger.info(f"Current time: {self.current_time} entry time: {entry_time}")
                     return
 
                 self.logger.info(f"Entry time reached for signal {_signal.pk}")
                 self.logger.info("Getting contract...")
 
                 if not contract:
-                    self.logger.warning(
-                        f"Failed to get contract for signal {_signal.pk}"
-                    )
+                    self.logger.warning(f"Failed to get contract for signal {_signal.pk}")
                     return
 
                 self.logger.info("Opening order...")
@@ -130,13 +127,11 @@ class BotSignalManager:
             if self.current_time >= exit_time:
                 if _signal.status != TradeStatus.CLOSE:
                     self.logger.info(f"Exit time reached for signal {_signal.pk}")
-                    self.check_and_close_position(_signal.order_id, contract)
+                    self.check_and_close_position(_signal, _signal.order_id, contract)
                     _signal.status = TradeStatus.CLOSE
                     _signal.save()
                     self.logger.info(f"Signal {_signal.pk} closed")
-            self.logger.info(
-                "=" * 20 + f" Finished processing signal {_signal.id} " + "=" * 20
-            )
+            self.logger.info("=" * 20 + f" Finished processing signal {_signal.id} " + "=" * 20)
         except Exception as e:
             self.logger.error(f"Error processing signal: {str(e)}", exc_info=True)
 
@@ -157,15 +152,13 @@ class BotSignalManager:
         contract = ContFuture(
             symbol=_signal.signal.symbol.financial_instrument,
             exchange=_signal.signal.symbol.exchange,
-            # currency="USD",
+            #currency="USD",
         )
 
         # Get contract details with retries
         for attempt in range(MAX_RETRIES):
             try:
-                self.logger.info(
-                    f"Attempting to get contract details ({attempt + 1}/{MAX_RETRIES})"
-                )
+                self.logger.info(f"Attempting to get contract details ({attempt + 1}/{MAX_RETRIES})")
                 details = self.ib_connector.reqContractDetails(contract)
                 if details:
                     return details[0]
@@ -216,19 +209,19 @@ class BotSignalManager:
             self.logger.error(f"Error checking trading hours: {str(e)}")
             raise (e)
             return False
-
-    def parse_data(self, contract_details) -> list:
+        
+    def parse_data(self,contract_details) -> list:
         trading_hours = []
         data = contract_details.tradingHours
-        tz = contract_details.timeZoneId
+        tz = contract_details.timeZoneId    
         for entry in data.split(";"):
             if not entry.strip():
                 continue
-
+                
             parts = entry.split(":", 1)
 
             data, status = parts
-
+            
             if status == "CLOSED":
                 trading_hours.append(
                     TradingHours(status="CLOSED", start=None, end=None)
@@ -243,7 +236,7 @@ class BotSignalManager:
                     minute=int(data[11:13]),
                     tzinfo=pytz.timezone(tz),
                 ).astimezone(pytz.UTC)
-
+                
                 end = datetime(
                     year=int(data[14:18]),
                     month=int(data[18:20]),
@@ -252,7 +245,7 @@ class BotSignalManager:
                     minute=int(data[25:27]),
                     tzinfo=pytz.timezone(tz),
                 ).astimezone(pytz.UTC)
-
+                          
                 trading_hours.append(
                     TradingHours(
                         status="OPEN",
@@ -265,39 +258,33 @@ class BotSignalManager:
     def _open_order(self, signal: BotSeasonalSignal, contract: ContFuture) -> None:
         """Opens an order for the signal"""
         try:
-            self.logger.info(
-                f"[1] Starting to open order for signal {signal.pk}, contract {contract.symbol}"
-            )
+            self.logger.info(f"[1] Starting to open order for signal {signal.pk}, contract {contract.symbol}")
             self.logger.info("[2] Requesting historical data...")
 
             # Get historical data with retries
             bars = self.ib_connector.reqHistoricalData(
-                contract,
-                endDateTime="",
-                durationStr="1 D",
-                barSizeSetting="1 min",
-                whatToShow="TRADES",
-                useRTH=True,
-                timeout=HISTORICAL_DATA_TIMEOUT,
-            )
+                        contract,
+                        endDateTime='',
+                        durationStr='1 D',
+                        barSizeSetting='1 min',
+                        whatToShow='TRADES',
+                        useRTH=True,
+                        timeout=HISTORICAL_DATA_TIMEOUT
+                    )
             if not bars:
                 raise Exception("Failed to get historical data")
 
             self.logger.info(f"[3] Received historical data: {len(bars)} bars")
 
             actual_price = float(bars[-1].close)
-            self.logger.info(
-                f"[4] Calculated current price for {contract.symbol}: {actual_price}"
-            )
+            self.logger.info(f"[4] Calculated current price for {contract.symbol}: {actual_price}")
 
             parent_id = self.ib_connector.client.getReqId()
             self.logger.info(f"[5] Got parent order ID: {parent_id}")
 
             entry_action = self.get_entry_direction(signal)
             exit_action = self.get_exit_direction(signal)
-            self.logger.info(
-                f"[6] Determined directions: entry={entry_action}, exit={exit_action}"
-            )
+            self.logger.info(f"[6] Determined directions: entry={entry_action}, exit={exit_action}")
 
             # Create limit order
             self.logger.info("[7] Creating limit order...")
@@ -310,11 +297,11 @@ class BotSignalManager:
             limit_order.tif = "GTC"
             limit_order.transmit = False
             # Set activation time
-            activation_time = (timezone.now() + timedelta(minutes=5)).strftime(
-                "%Y%m%d-%H:%M:%S"
-            )
+            activation_time = (
+                timezone.now() + timedelta(minutes=5)
+                ).strftime('%Y%m%d-%H:%M:%S')
             self.logger.info(f"Order activation time: {repr(activation_time)}")
-            # limit_order.goodAfterTime = activation_time
+            limit_order.goodAfterTime = activation_time
             self.logger.info(f"[8] Set order activation time: {activation_time}")
 
             # Calculate stop loss
@@ -332,7 +319,7 @@ class BotSignalManager:
                 entry_price=actual_price,
                 stop_loss=stoploss,
                 multiplier=float(contract.multiplier),
-                risk_percent=signal.signal.risk,
+                risk_percent=signal.signal.risk
             )
             self.logger.info(f"[13] Calculated position size: {lots} contracts")
 
@@ -344,9 +331,7 @@ class BotSignalManager:
             trade = None
             for attempt in range(MAX_RETRIES):
                 try:
-                    self.logger.info(
-                        f"[15] Attempting to place limit order ({attempt + 1}/{MAX_RETRIES})..."
-                    )
+                    self.logger.info(f"[15] Attempting to place limit order ({attempt + 1}/{MAX_RETRIES})...")
                     trade = self.ib_connector.placeOrder(contract, limit_order)
                     if trade:
                         break
@@ -371,16 +356,12 @@ class BotSignalManager:
             stop_order.parentId = trade.order.orderId
             stop_order.transmit = True
             stop_order.tif = "GTC"
-            self.logger.info(
-                f"[18] Linking stop order to parent order {trade.order.orderId}"
-            )
+            self.logger.info(f"[18] Linking stop order to parent order {trade.order.orderId}")
 
             stop_trade = None
             for attempt in range(MAX_RETRIES):
                 try:
-                    self.logger.info(
-                        f"[19] Attempting to place stop order ({attempt + 1}/{MAX_RETRIES})..."
-                    )
+                    self.logger.info(f"[19] Attempting to place stop order ({attempt + 1}/{MAX_RETRIES})...")
                     stop_trade = self.ib_connector.placeOrder(contract, stop_order)
                     if stop_trade:
                         break
@@ -405,37 +386,21 @@ class BotSignalManager:
                 for log in stop_trade.log:
                     self.logger.info(f"[DEBUG] Stop order log: {log.message}")
 
-            if trade.order.permId == 0:
-                # If permId is still 0, wait for update
-                counter = 0
-                while trade.order.permId == 0 and counter < 5:
-                    self.logger.info(
-                        f"Waiting for permId for order {trade.order.orderId}..."
-                    )
-                    self.ib_connector.sleep(1)  # Wait more
-                    counter += 1
-            if trade.order.permId == 0:
-                self.logger.warning(
-                    f"Failed to get permId for order {trade.order.orderId}"
-                )
-            else:
-                logger.info(
-                    f"Order placed. orderId: {trade.order.orderId}, permId: {trade.order.permId}"
-                )
-
+            self.logger.info("⏳ Waiting for order confirmations...")
+            while not trade.order.permId or not stop_trade.order.permId:
+                self.ib_connector.sleep(1)
+                self.ib_connector.reqOpenOrders()
             # Save order ID in signal
             signal.order_id = trade.order.orderId
+            signal.stop_order_id = stop_trade.order.permId
             signal.save()
-            self.logger.info(
-                f"[21] Saved order perm ID {trade.order} in signal {signal.pk}"
-            )
+            self.logger.info(f"[21] Saved order perm ID {trade.order} in signal {signal.pk}")
             self.logger.info(
                 f"[DEBUG] StopOrder -> action={stop_order.action}, "
                 f"qty={stop_order.totalQuantity}, stopPrice={stop_order.auxPrice}, "
                 f"parentId={stop_order.parentId}, transmit={stop_order.transmit}"
-            )
-            self.logger.info(
-                f"""[22] ORDER PLACEMENT SUMMARY:
+)
+            self.logger.info(f"""[22] ORDER PLACEMENT SUMMARY:
             Symbol: {contract.symbol}
             Direction: {entry_action}
             Entry price: {actual_price}
@@ -444,8 +409,7 @@ class BotSignalManager:
             Limit order ID: {trade.order.orderId}
             Stop order ID: {stop_trade.order.orderId}
             Activation time: {activation_time}
-            """
-            )
+            """)
 
         except Exception as e:
             self.logger.error(f"[ERROR] Error opening order: {str(e)}", exc_info=True)
@@ -453,13 +417,9 @@ class BotSignalManager:
 
     def get_balance(self) -> float:
         account_summary = self.ib_connector.accountSummary()
-        net_liquidation_values = [
-            val for val in account_summary if val.tag == "NetLiquidation"
-        ]
+        net_liquidation_values = [val for val in account_summary if val.tag == 'NetLiquidation']
         for value in net_liquidation_values:
-            print(
-                f"Account: {value.account}, NetLiquidation: {value.value} {value.currency}"
-            )
+            print(f"Account: {value.account}, NetLiquidation: {value.value} {value.currency}")
             return value.value
 
     def get_entry_direction(self, signal: BotSeasonalSignal) -> str:
@@ -473,42 +433,27 @@ class BotSignalManager:
         stoploss_value = float(signal.signal.stoploss)
         if signal.signal.stoploss_type == "POINTS":
             stop_price = round(
-                (
-                    actual_price - stoploss_value
-                    if is_long
-                    else actual_price + stoploss_value
-                ),
-                2,
+                actual_price - stoploss_value if is_long
+                else actual_price + stoploss_value, 2
             )
         else:
             stop_price = round(
-                (
-                    actual_price * (1 - stoploss_value / 100)
-                    if is_long
-                    else actual_price * (1 + stoploss_value / 100)
-                ),
-                2,
+                actual_price * (1 - stoploss_value / 100) if is_long
+                else actual_price * (1 + stoploss_value / 100), 2
             )
         return stop_price
 
-    def calculate_position_size(
-        self,
-        balance,
-        entry_price,
-        stop_loss,
-        multiplier: int | float = 1,
-        risk_percent=2,
-    ):
+    def calculate_position_size(self, balance, entry_price, stop_loss, multiplier: int | float = 1, risk_percent=2):
         """
         Рассчитывает размер позиции на основе риска
-
+        
         Args:
             balance (float): Баланс счета
             entry_price (float): Цена входа
             stop_loss (float): Цена стоп-лосса
             multiplier (float): Множитель контракта
             risk_percent (float): Процент риска от баланса
-
+            
         Returns:
             int: Количество контрактов
         """
@@ -527,9 +472,7 @@ class BotSignalManager:
             self.logger.info(f"Risk percent: {risk_percent}%")
 
             risk_amount = balance * (risk_percent / 100)  # Amount of money to risk
-            risk_per_unit = (
-                abs(entry_price - stop_loss) * multiplier
-            )  # Loss per contract
+            risk_per_unit = abs(entry_price - stop_loss) * multiplier  # Loss per contract
 
             self.logger.info(f"Risk amount: {risk_amount}")
             self.logger.info(f"Risk per contract: {risk_per_unit}")
@@ -549,27 +492,28 @@ class BotSignalManager:
             self.logger.info("Returning minimum position size: 1")
             return 1
 
-    def check_and_close_position(self, order_id: int, contract: ContFuture) -> bool:
+    def check_and_close_position(self, signal: BotSeasonalSignal, order_id: int, contract: ContFuture) -> bool:
         """
-        Проверяет и закрывает позицию если необходимо
-
+        Checks and closes position if necessary
+        
         Args:
-            order_id: ID ордера (используется только для логов)
-            contract: Объект контракта
-
+            signal: Signal object
+            order_id: Order ID (used only for logs)
+            contract: Contract object
+            
         Returns:
-            bool: True если позиция успешно закрыта, False в противном случае
+            bool: True if position was successfully closed, False otherwise
         """
         try:
             self.logger.info("=" * 40)
             self.logger.info(
                 f"=== Starting position check for {contract.contract.symbol} ==="
             )
-
+            
             # 1. Check for open position
             self.logger.info("Checking for open position...")
             positions = self.ib_connector.positions()
-
+            
             # Log all positions for debugging
             self.logger.info(f"Retrieved {len(positions)} positions:")
             for i, pos in enumerate(positions):
@@ -578,90 +522,108 @@ class BotSignalManager:
                     f"position={pos.position}, "
                     f"avgCost={pos.avgCost}"
                 )
-
+            
             position = next(
                 (p for p in positions if p.contract.symbol == contract.contract.symbol),
-                None,
+                None
             )
-
+            
             if not position:
                 self.logger.warning(
                     f"Position for {contract.contract.symbol} not found in positions list."
                 )
+                signal.status = TradeStatus.CLOSE
+                signal.save()
                 return False
-
+                
             if position.position == 0:
-                self.logger.info(
-                    f"Position for {contract.contract.symbol} has zero volume."
-                )
+                self.logger.info(f"Position for {contract.contract.symbol} has zero volume.")
+                signal.status = TradeStatus.CLOSE
+                signal.save()
                 return False
-
+                
             self.logger.info(
                 f"Found position for {contract.contract.symbol}: "
                 f"volume={position.position}, average price={position.avgCost}"
             )
-
+            
+            self.ib_connector.reqAllOpenOrders()
+            self.ib_connector.sleep(1) 
             # 2. Check for active stop orders
             self.logger.info("Checking for active stop orders...")
-            open_orders = self.ib_connector.openOrders()
+            matching_orders = [
+                trade for trade in self.ib_connector.trades()
+                if trade.order.permId == signal.stop_order_id
+            ]
+            self.logger.info(f"Matching orders: {matching_orders}")
 
-            # Log all open orders
-            self.logger.info(f"Retrieved {len(open_orders)} open orders:")
-            for i, order in enumerate(open_orders[:5]):  # Show first 5 for brevity
+            if not matching_orders:
                 self.logger.info(
-                    f"  #{i+1}: orderId={order.orderId}, "
-                    f"action={order.action}, "
-                    f"orderType={order.orderType}, "
-                    f"totalQuantity={order.totalQuantity}"
+                    f"No active stop order found for {contract.contract.symbol} "
+                    f"with permId {signal.stop_order_id}"
                 )
-
-            # 3. Close position
+                signal.status = TradeStatus.CLOSE
+                signal.save()
+                return False
+            
+            stop_order = matching_orders[0].order
+            self.logger.info(
+                f"Found stop order: permId={stop_order.permId}, "
+                f"quantity={stop_order.totalQuantity}"
+            )
+            
+            # 3. Close position with size equal to stop order
             self.logger.info(
                 f"Preparing to close position for {contract.contract.symbol}"
             )
-            action = "SELL" if position.position > 0 else "BUY"
-            quantity = abs(position.position)
-
+            action = 'SELL' if position.position > 0 else 'BUY'
+            quantity = stop_order.totalQuantity  # Use stop order quantity
+            
             self.logger.info(
                 f"Creating order: {action} {quantity} {contract.contract.symbol}"
             )
-
+            
             close_order = MarketOrder(action, quantity)
-            close_order.orderId = self.ib_connector.client.getReqId()  # Generate new ID
+            close_order.orderId = self.ib_connector.client.getReqId()
             self.logger.info(f"Assigned new order ID: {close_order.orderId}")
-
+            
             trade = self.ib_connector.placeOrder(contract.contract, close_order)
-
+            
             if not trade:
                 self.logger.error(
                     f"Failed to place closing order for {contract.contract.symbol}."
                 )
                 return False
-
+                
             self.logger.info(
                 f"Closing order placed: orderId={trade.order.orderId}, "
                 f"status={trade.orderStatus.status}, "
                 f"{action} {quantity} {contract.contract.symbol}"
             )
 
+            # Cancel stop order after placing market order
+            self.logger.info(f"Cancelling stop order with permId: {stop_order.permId}")
+            self.ib_connector.cancelOrder(stop_order)
+            self.logger.info("Stop order cancellation request sent")
+            
             # 4. Check closing status
-            wait_time = 5  # Increase wait time for order fill
-            self.logger.info(
-                f"Waiting for closing order execution ({wait_time} sec)..."
-            )
+            wait_time = 5
+            self.logger.info(f"Waiting for closing order execution ({wait_time} sec)...")
             self.ib_connector.sleep(wait_time)
-
+            
             # Check if position was closed
             positions = self.ib_connector.positions()
             position = next(
                 (p for p in positions if p.contract.symbol == contract.contract.symbol),
-                None,
+                None
             )
-
+            
             if not position or position.position == 0:
                 self.logger.info(
                     f"Position for {contract.contract.symbol} successfully closed"
                 )
+                signal.status = TradeStatus.CLOSE
+                signal.save()
                 return True
             else:
                 self.logger.warning(
@@ -669,16 +631,12 @@ class BotSignalManager:
                     f"remaining volume: {position.position}"
                 )
                 return False
-
+                
         except Exception as e:
             self.logger.error(
                 f"Error closing position {contract.contract.symbol}: {str(e)}",
-                exc_info=True,
+                exc_info=True
             )
-            # Log additional error information
-            import traceback
-
-            self.logger.error(f"Error details: {traceback.format_exc()}")
             return False
         finally:
             self.logger.info(
