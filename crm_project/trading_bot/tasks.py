@@ -25,7 +25,7 @@ def check_signals():
     except AppRegistryNotReady:
         logger.warning("Django apps are not ready, retrying in 5 seconds")
         # Если приложения не готовы, пробуем снова через 5 секунд
-        check_signals.apply_async(countdown=5)
+        # check_signals.apply_async(countdown=5)
         return "Waiting for Django apps to be ready..."
 
 
@@ -50,7 +50,7 @@ def manage_bot():
         return bot.run()
     except AppRegistryNotReady:
         logger.warning("Django apps are not ready, retrying in 5 seconds")
-        manage_bot.apply_async(countdown=5)
+        # manage_bot.apply_async(countdown=5)
         return "Waiting for Django apps to be ready..."
     except Exception as e:
         logger.error(f"Error in manage_bot task: {str(e)}", exc_info=True)
